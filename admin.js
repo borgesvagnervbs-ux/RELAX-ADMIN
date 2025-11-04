@@ -1,4 +1,4 @@
-// admin.js - Painel Administrativo com Autenticação
+// admin.js - Painel Administrativo com Autenticação e Melhorias
 
 // Elementos da UI
 const loginScreenAdmin = document.getElementById('loginScreenAdmin');
@@ -187,7 +187,6 @@ btnAddType.addEventListener('click', async () => {
   
   try {
     if (editingTypeId) {
-      // Editar tipo existente
       const typeToEdit = allTypes.find(t => t.id === editingTypeId);
       if (typeToEdit) {
         typeToEdit.name = name;
@@ -196,7 +195,6 @@ btnAddType.addEventListener('click', async () => {
         alert('Tipo de massagem atualizado com sucesso!');
       }
     } else {
-      // Criar novo tipo
       const obj = {
         id: uid(),
         name,
@@ -227,7 +225,6 @@ function editType(typeId) {
   btnAddType.classList.remove('btn-primary');
   btnAddType.classList.add('btn-success');
   
-  // Scroll para o topo do formulário
   typeName.scrollIntoView({ behavior: 'smooth', block: 'center' });
   typeName.focus();
 }
@@ -366,7 +363,6 @@ async function loadAppointmentsUI() {
       const left = document.createElement('div');
       left.style.flex = '1';
       
-      // Status badge
       const statusBadge = document.createElement('span');
       statusBadge.className = 'status-badge';
       statusBadge.style.display = 'inline-block';
@@ -394,10 +390,18 @@ async function loadAppointmentsUI() {
         statusBadge.textContent = '✗ CANCELADO';
       }
       
+      let noteHTML = '';
+      if (ap.note) {
+        noteHTML = `<div class="small" style="margin-top:6px"><strong>Obs cliente:</strong> ${ap.note}</div>`;
+      }
+      if (ap.cancellationReason) {
+        noteHTML += `<div class="small" style="margin-top:6px;color:#991b1b"><strong>Motivo cancelamento:</strong> ${ap.cancellationReason}</div>`;
+      }
+      
       left.innerHTML = `
         <div style="font-weight:800;margin-top:8px">${ap.typeName} • ${formatMoney(ap.price)}</div>
         <div class="small">${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} — ${ap.clientName}${ap.clientPhone?' • '+ap.clientPhone:''}</div>
-        <div class="small" style="margin-top:6px">${ap.note||''}</div>
+        ${noteHTML}
       `;
       left.insertBefore(statusBadge, left.firstChild);
       
@@ -406,7 +410,6 @@ async function loadAppointmentsUI() {
       right.style.flexDirection = 'column';
       right.style.gap = '8px';
       
-      // Botão Pago
       const btnPaid = document.createElement('button');
       btnPaid.className = ap.paid ? 'btn btn-success btn-sm' : 'btn btn-ghost btn-sm';
       btnPaid.textContent = ap.paid ? '✓ Pago' : 'Marcar pago';
@@ -421,19 +424,24 @@ async function loadAppointmentsUI() {
         }
       };
       
-      // Botão Excluir
       const btnDelete = document.createElement('button');
       btnDelete.className = 'btn btn-danger btn-sm';
-      btnDelete.textContent = 'Excluir';
+      btnDelete.textContent = 'Cancelar';
       btnDelete.onclick = async () => {
-        if (confirm('Excluir agendamento?')) {
+        const reason = prompt('Informe o motivo do cancelamento (obrigatório):');
+        if (reason && reason.trim()) {
           try {
-            await deleteAppointment(ap.id);
-            alert('Agendamento excluído!');
+            ap.status = 'CANCELADO';
+            ap.cancellationReason = reason.trim();
+            await saveAppointment(ap);
+            alert('Agendamento cancelado!');
+            loadAppointmentsUI();
           } catch (error) {
-            console.error('Erro ao excluir:', error);
-            alert('Erro ao excluir agendamento.');
+            console.error('Erro ao cancelar:', error);
+            alert('Erro ao cancelar agendamento.');
           }
+        } else if (reason !== null) {
+          alert('O motivo do cancelamento é obrigatório!');
         }
       };
       
@@ -596,7 +604,6 @@ function renderWeek() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
-  // Mostrar hoje e os próximos 6 dias
   for (let i = 0; i <= 6; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
@@ -683,17 +690,20 @@ async function updateDayDetail() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const isPastDate = selectedDate < today;
+  const isToday = selectedDate.getTime() === today.getTime();
+  const currentHour = new Date().getHours();
   
-  // Se for data passada, marcar todos os horários vazios como indisponíveis
-  if (isPastDate) {
+  // Marcar horários passados como indisponíveis automaticamente
+  if (isPastDate || isToday) {
     for (let hour = 8; hour <= 22; hour++) {
-      const startTs = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), hour, 0, 0, 0).getTime();
-      const endTs = startTs + 60 * 60 * 1000;
-      const appts = allAppointments.filter(a => a.start >= startTs && a.start < endTs);
-      
-      // Se não teve agendamento, marcar como indisponível
-      if (appts.length === 0) {
-        currentDayAvailability[hour] = false;
+      if (isPastDate || (isToday && hour < currentHour)) {
+        const startTs = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), hour, 0, 0, 0).getTime();
+        const endTs = startTs + 60 * 60 * 1000;
+        const appts = allAppointments.filter(a => a.start >= startTs && a.start < endTs);
+        
+        if (appts.length === 0) {
+          currentDayAvailability[hour] = false;
+        }
       }
     }
   }
@@ -717,7 +727,6 @@ async function updateDayDetail() {
   const allEnabled = Object.values(currentDayAvailability).every(v => v === true);
   toggleAllCheckbox.checked = allEnabled;
   
-  // Desabilitar toggle all para datas passadas
   if (isPastDate) {
     toggleAllCheckbox.disabled = true;
     toggleAllCheckbox.style.cursor = 'not-allowed';
@@ -734,6 +743,8 @@ async function updateDayDetail() {
     toggleAllCheckbox.addEventListener('change', async () => {
       const newValue = toggleAllCheckbox.checked;
       for (let hour = 8; hour <= 22; hour++) {
+        // Não alterar horários já passados do dia atual
+        if (isToday && hour < currentHour) continue;
         currentDayAvailability[hour] = newValue;
       }
       try {
@@ -757,20 +768,24 @@ async function updateDayDetail() {
     row.style.alignItems = 'center';
     row.style.gap = '10px';
     
+    const isPastHour = isPastDate || (isToday && hour < currentHour);
+    
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.checked = currentDayAvailability[hour] !== false;
     checkbox.style.width = '20px';
     checkbox.style.height = '20px';
-    checkbox.style.cursor = isPastDate ? 'not-allowed' : 'pointer';
+    checkbox.style.cursor = isPastHour ? 'not-allowed' : 'pointer';
     checkbox.style.flexShrink = '0';
-    checkbox.disabled = isPastDate;
+    checkbox.disabled = isPastHour;
     
-    if (!isPastDate) {
+    if (!isPastHour) {
       checkbox.addEventListener('change', async () => {
         currentDayAvailability[hour] = checkbox.checked;
         try {
           await saveDayAvailability(dateStr, currentDayAvailability);
+          // Atualizar imediatamente a exibição
+          await updateDayDetail();
         } catch (error) {
           console.error('Erro ao salvar disponibilidade:', error);
           alert('Erro ao atualizar disponibilidade');
@@ -812,7 +827,6 @@ async function updateDayDetail() {
         <div class="small">${a.clientName}${a.clientPhone ? ' • ' + a.clientPhone : ''}</div>
       `;
       
-      // Status dropdown compacto
       const statusSelect = document.createElement('select');
       statusSelect.className = 'status-select-compact';
       statusSelect.innerHTML = `
@@ -823,13 +837,33 @@ async function updateDayDetail() {
       `;
       statusSelect.onchange = async () => {
         const newStatus = statusSelect.value;
-        a.status = newStatus;
-        try {
-          await saveAppointment(a);
-          updateDayDetail();
-        } catch (error) {
-          console.error('Erro ao atualizar status:', error);
-          alert('Erro ao atualizar status.');
+        if (newStatus === 'CANCELADO' && a.status !== 'CANCELADO') {
+          const reason = prompt('Informe o motivo do cancelamento (obrigatório):');
+          if (reason && reason.trim()) {
+            a.status = newStatus;
+            a.cancellationReason = reason.trim();
+            try {
+              await saveAppointment(a);
+              updateDayDetail();
+            } catch (error) {
+              console.error('Erro ao atualizar status:', error);
+              alert('Erro ao atualizar status.');
+            }
+          } else if (reason !== null) {
+            alert('O motivo do cancelamento é obrigatório!');
+            statusSelect.value = a.status;
+          } else {
+            statusSelect.value = a.status;
+          }
+        } else {
+          a.status = newStatus;
+          try {
+            await saveAppointment(a);
+            updateDayDetail();
+          } catch (error) {
+            console.error('Erro ao atualizar status:', error);
+            alert('Erro ao atualizar status.');
+          }
         }
       };
       
@@ -849,7 +883,13 @@ viewMode.addEventListener('change', () => {
   if (viewMode.value === 'week') {
     document.getElementById('calendarArea').classList.add('hidden');
     weekArea.classList.remove('hidden');
+    // Selecionar o dia atual automaticamente
+    if (!selectedDate) {
+      selectedDate = new Date();
+      selectedDate.setHours(0, 0, 0, 0);
+    }
     renderWeek();
+    updateDayDetail();
   } else {
     weekArea.classList.add('hidden');
     document.getElementById('calendarArea').classList.remove('hidden');
