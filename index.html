@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Painel Administrador - Massagens Zen</title>
+  <link rel="stylesheet" href="style-admin.css">
+</head>
+<body>
+  <!-- Tela de Login Admin -->
+  <div id="loginScreenAdmin" class="auth-screen">
+    <div class="auth-container">
+      <div class="logo-placeholder" style="width: 80px; height: 80px; margin: 0 auto 24px;"></div>
+      <h1 style="text-align: center; margin-bottom: 8px;">Painel Administrativo</h1>
+      <p style="text-align: center; color: var(--text-secondary); margin-bottom: 32px;">Acesso restrito</p>
+      
+      <div style="margin-bottom: 12px;">
+        <input id="adminLoginEmail" type="email" class="input" placeholder="Email" required/>
+      </div>
+      <div style="margin-bottom: 16px;">
+        <input id="adminLoginPassword" type="password" class="input" placeholder="Senha" required/>
+      </div>
+      <button class="btn btn-primary" onclick="loginAdmin()" style="width: 100%;">Entrar no Painel</button>
+      
+      <div class="divider">ou</div>
+      
+      <button class="btn btn-google" onclick="loginAdminWithGoogle()" style="width: 100%;">
+        <svg width="18" height="18" viewBox="0 0 18 18" style="margin-right: 8px;">
+          <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
+          <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+          <path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707 0-.593.102-1.17.282-1.709V4.958H.957C.347 6.173 0 7.548 0 9c0 1.452.348 2.827.957 4.042l3.007-2.335z"/>
+          <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+        </svg>
+        Admin com Google
+      </button>
+    </div>
+  </div>
+
+  <!-- Painel Admin -->
+  <div id="mainScreenAdmin" class="hidden">
+    <header class="app-header">
+      <button class="hamburger" id="btnMenu" aria-label="Abrir menu">☰</button>
+      <div class="logo-placeholder" id="logoAdmin"></div>
+      <div class="header-title">
+        <h1>Painel Administrador</h1>
+        <p id="adminGreeting">Gerencie agendamentos</p>
+      </div>
+    </header>
+
+    <div class="app-wrap">
+      <aside class="sidebar" id="sidebar">
+        <div class="sb-logo">
+          <div class="logo-placeholder"></div>
+          <div>
+            <div style="font-weight:800">Massagens Zen</div>
+            <div class="small">Painel Administrativo</div>
+          </div>
+        </div>
+
+        <nav class="sb-menu">
+          <div class="sb-item active" data-tab="dashboard">Dashboard</div>
+          <div class="sb-item" data-tab="types">Tipos de Massagem</div>
+          <div class="sb-item" data-tab="appointments">Agendamentos</div>
+          <div class="sb-item" data-tab="finance">Controle Financeiro</div>
+        </nav>
+
+        <div class="sb-footer">
+          <button class="btn btn-danger btn-sm" onclick="logoutAdmin()" style="width:100%;margin-bottom:8px">Sair</button>
+          <div class="small" style="text-align:center">Versão 1.0</div>
+        </div>
+      </aside>
+
+      <main class="container" id="mainContent">
+        <section class="card" id="tab-dashboard">
+          <div class="cal-top">
+            <div>
+              <h3>Calendário</h3>
+              <div class="small">Selecione um dia para gerenciar horários</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <button class="btn btn-ghost" id="btnToday">Hoje</button>
+              <select id="viewMode" class="input" style="width:160px">
+                <option value="month">Visão Mensal</option>
+                <option value="week">Visão Semana (±3 dias)</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="calendarArea">
+            <div id="calendarClient" class="calendar-client"></div>
+          </div>
+
+          <div id="weekArea" class="hidden">
+            <div class="week-container" id="weekContainer"></div>
+          </div>
+
+          <div id="dayDetail" class="hidden">
+            <div class="card" style="margin-top:16px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <div>
+                  <div style="font-weight:800;font-size:1.2rem" id="selectedDayTitle">Selecione um dia</div>
+                  <div class="small" id="selectedDaySub">—</div>
+                </div>
+              </div>
+              <div id="hourlyList"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card hidden" id="tab-types">
+          <h3>Tipos de Massagem</h3>
+          <div class="small">Cadastre nome e valor por hora</div>
+          <div class="row" style="margin-top:8px">
+            <input id="typeName" class="input col" placeholder="Ex: Relaxante"/>
+            <input id="typePrice" class="input" placeholder="R$ 0,00" style="width:140px"/>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <button class="btn btn-primary" id="btnAddType">Salvar tipo</button>
+            <button class="btn btn-ghost" id="btnReloadTypes">Atualizar</button>
+          </div>
+          <div id="typesList" style="margin-top:12px"></div>
+        </section>
+
+        <section class="card hidden" id="tab-appointments">
+          <h3>Agendamentos</h3>
+          <div class="small">Gerencie status e pagamentos</div>
+          <div class="row" style="margin-top:8px">
+            <input type="date" id="filterDay" class="input col">
+            <select id="filterWeek" class="input" style="width:160px">
+              <option value="all">Todas</option>
+              <option value="current">Semana atual</option>
+              <option value="next">Próxima semana</option>
+            </select>
+          </div>
+          <div id="appointmentsList" class="list" style="margin-top:12px"></div>
+        </section>
+
+        <section class="card hidden" id="tab-finance">
+          <h3>Controle Financeiro</h3>
+          <div class="small">Valores contabilizados quando marcado como PAGO</div>
+          <div class="finance-row" style="margin-top:10px">
+            <div class="finance-box">
+              <div class="small">Hoje</div>
+              <div id="sumDay" style="font-weight:800;margin-top:6px">R$ 0,00</div>
+            </div>
+            <div class="finance-box">
+              <div class="small">Mês</div>
+              <div id="sumMonth" style="font-weight:800;margin-top:6px">R$ 0,00</div>
+            </div>
+            <div class="finance-box">
+              <div class="small">Ano</div>
+              <div id="sumYear" style="font-weight:800;margin-top:6px">R$ 0,00</div>
+            </div>
+          </div>
+          <div style="margin-top:12px">
+            <div class="small">Lista de sessões pagas</div>
+            <div id="paidList" style="margin-top:8px"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  
+  <!-- Scripts -->
+  <script src="firebase-config.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
