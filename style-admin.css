@@ -348,6 +348,136 @@ textarea {
   box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
 }
 
+/* ===== FILTROS DE STATUS MODERNOS ===== */
+.filter-status-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.filter-status-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 12px;
+  border-radius: 14px;
+  border: 2px solid #e6f1ee;
+  background: linear-gradient(135deg, #ffffff 0%, #fbfffe 100%);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(15, 43, 42, 0.04);
+  min-height: 90px;
+  position: relative;
+  overflow: hidden;
+}
+
+.filter-status-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: transparent;
+  transition: all 0.3s ease;
+}
+
+.filter-status-btn:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(15, 43, 42, 0.12);
+  border-color: var(--accent);
+}
+
+.filter-status-btn .filter-icon {
+  font-size: 2rem;
+  transition: all 0.3s ease;
+  filter: grayscale(0.3);
+}
+
+.filter-status-btn:hover .filter-icon {
+  transform: scale(1.15);
+  filter: grayscale(0);
+}
+
+/* Estados ativos dos filtros */
+.filter-status-btn.active {
+  border-color: var(--primary);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  color: white;
+  box-shadow: 0 8px 24px rgba(111, 183, 167, 0.3);
+  transform: translateY(-2px);
+}
+
+.filter-status-btn.active::before {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.filter-status-btn.active .filter-icon {
+  filter: grayscale(0) brightness(1.2);
+  transform: scale(1.1);
+}
+
+/* Cores específicas quando ativo */
+.filter-status-btn[data-filter="PENDENTE"].active {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  border-color: #f59e0b;
+  box-shadow: 0 8px 24px rgba(251, 191, 36, 0.4);
+}
+
+.filter-status-btn[data-filter="CONFIRMADO"].active {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-color: #059669;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+}
+
+.filter-status-btn[data-filter="REALIZADO"].active {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border-color: #2563eb;
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+}
+
+.filter-status-btn[data-filter="CANCELADO"].active {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border-color: #dc2626;
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4);
+}
+
+.filter-status-btn[data-filter="pago"].active {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  border-color: #7c3aed;
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
+}
+
+.filter-status-btn[data-filter="nao-pago"].active {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  border-color: #4b5563;
+  box-shadow: 0 8px 24px rgba(107, 114, 128, 0.4);
+}
+
+/* Responsivo para mobile */
+@media (max-width: 640px) {
+  .filter-status-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .filter-status-btn {
+    min-height: 85px;
+    padding: 12px 8px;
+    font-size: 0.8rem;
+  }
+  
+  .filter-status-btn .filter-icon {
+    font-size: 1.75rem;
+  }
+}
+
 /* ===== STATUS SELECT (ESTILO PADRONIZADO) ===== */
 .status-select,
 .status-select-compact {
@@ -374,7 +504,6 @@ textarea {
   max-width: 140px;
 }
 
-/* Cores dos status no select */
 .status-select option[value="PENDENTE"],
 .status-select-compact option[value="PENDENTE"] {
   background: #fef3c7;
@@ -753,6 +882,65 @@ textarea {
   display: none !important;
 }
 
+/* ===== AUTH SCREEN ===== */
+.auth-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+}
+
+.auth-container {
+  background: white;
+  border-radius: var(--radius);
+  padding: 32px 24px;
+  box-shadow: 0 20px 60px rgba(15, 43, 42, 0.15);
+  width: 100%;
+  max-width: 420px;
+}
+
+.divider {
+  text-align: center;
+  margin: 16px 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  position: relative;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 40%;
+  height: 1px;
+  background: #e6f1ee;
+}
+
+.divider::before {
+  left: 0;
+}
+
+.divider::after {
+  right: 0;
+}
+
+.btn-google {
+  background: white;
+  border: 2px solid #e6f1ee;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-google:hover {
+  background: var(--bg);
+  border-color: var(--accent);
+}
+
 /* ===== RESPONSIVE - TABLET ===== */
 @media (min-width: 768px) {
   .hamburger {
@@ -780,6 +968,10 @@ textarea {
   .calendar-day {
     font-size: 1.05rem;
   }
+  
+  .filter-status-container {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
 }
 
 /* ===== RESPONSIVE - DESKTOP ===== */
@@ -797,6 +989,14 @@ textarea {
 
   .calendar-grid {
     gap: 10px;
+  }
+  
+  .filter-status-container {
+    grid-template-columns: repeat(7, 1fr);
+  }
+  
+  .filter-status-btn {
+    min-height: 100px;
   }
 }
 
@@ -816,6 +1016,29 @@ textarea {
   animation: fadeIn 0.3s ease;
 }
 
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.filter-status-btn {
+  animation: slideIn 0.3s ease backwards;
+}
+
+.filter-status-btn:nth-child(1) { animation-delay: 0.05s; }
+.filter-status-btn:nth-child(2) { animation-delay: 0.1s; }
+.filter-status-btn:nth-child(3) { animation-delay: 0.15s; }
+.filter-status-btn:nth-child(4) { animation-delay: 0.2s; }
+.filter-status-btn:nth-child(5) { animation-delay: 0.25s; }
+.filter-status-btn:nth-child(6) { animation-delay: 0.3s; }
+.filter-status-btn:nth-child(7) { animation-delay: 0.35s; }
+
 /* ===== ACCESSIBILITY ===== */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -832,7 +1055,8 @@ textarea {
   .hamburger,
   .sidebar,
   .btn,
-  .fab {
+  .fab,
+  .filter-status-container {
     display: none !important;
   }
 
