@@ -315,6 +315,23 @@ async function loadTypesUI() {
 // AGENDAMENTOS
 // ====================
 
+// Função auxiliar para obter classe do status
+function getStatusBadgeClass(status) {
+  const statusLower = status.toLowerCase();
+  return `status-badge status-${statusLower}`;
+}
+
+// Função auxiliar para obter ícone e texto do status
+function getStatusDisplay(status) {
+  const displays = {
+    'PENDENTE': { icon: '⏳', text: 'PENDENTE' },
+    'CONFIRMADO': { icon: '✓', text: 'CONFIRMADO' },
+    'REALIZADO': { icon: '✓', text: 'REALIZADO' },
+    'CANCELADO': { icon: '✗', text: 'CANCELADO' }
+  };
+  return displays[status] || { icon: '', text: status };
+}
+
 filterDay.addEventListener('change', loadAppointmentsUI);
 filterWeek.addEventListener('change', loadAppointmentsUI);
 
@@ -363,32 +380,12 @@ async function loadAppointmentsUI() {
       const left = document.createElement('div');
       left.style.flex = '1';
       
+      const statusDisplay = getStatusDisplay(ap.status);
       const statusBadge = document.createElement('span');
-      statusBadge.className = 'status-badge';
+      statusBadge.className = getStatusBadgeClass(ap.status);
+      statusBadge.textContent = `${statusDisplay.icon} ${statusDisplay.text}`;
       statusBadge.style.display = 'inline-block';
-      statusBadge.style.padding = '4px 10px';
-      statusBadge.style.borderRadius = '12px';
-      statusBadge.style.fontSize = '0.75rem';
-      statusBadge.style.fontWeight = '700';
       statusBadge.style.marginBottom = '8px';
-      
-      if (ap.status === 'PENDENTE') {
-        statusBadge.style.background = '#fef3c7';
-        statusBadge.style.color = '#92400e';
-        statusBadge.textContent = '⏳ PENDENTE';
-      } else if (ap.status === 'CONFIRMADO') {
-        statusBadge.style.background = '#d1fae5';
-        statusBadge.style.color = '#065f46';
-        statusBadge.textContent = '✓ CONFIRMADO';
-      } else if (ap.status === 'REALIZADO') {
-        statusBadge.style.background = '#dbeafe';
-        statusBadge.style.color = '#1e40af';
-        statusBadge.textContent = '✓ REALIZADO';
-      } else if (ap.status === 'CANCELADO') {
-        statusBadge.style.background = '#fee2e2';
-        statusBadge.style.color = '#991b1b';
-        statusBadge.textContent = '✗ CANCELADO';
-      }
       
       let noteHTML = '';
       if (ap.note) {
@@ -424,29 +421,7 @@ async function loadAppointmentsUI() {
         }
       };
       
-      const btnDelete = document.createElement('button');
-      btnDelete.className = 'btn btn-danger btn-sm';
-      btnDelete.textContent = 'Cancelar';
-      btnDelete.onclick = async () => {
-        const reason = prompt('Informe o motivo do cancelamento (obrigatório):');
-        if (reason && reason.trim()) {
-          try {
-            ap.status = 'CANCELADO';
-            ap.cancellationReason = reason.trim();
-            await saveAppointment(ap);
-            alert('Agendamento cancelado!');
-            loadAppointmentsUI();
-          } catch (error) {
-            console.error('Erro ao cancelar:', error);
-            alert('Erro ao cancelar agendamento.');
-          }
-        } else if (reason !== null) {
-          alert('O motivo do cancelamento é obrigatório!');
-        }
-      };
-      
       right.appendChild(btnPaid);
-      right.appendChild(btnDelete);
       
       div.style.display = 'flex';
       div.style.justifyContent = 'space-between';
@@ -693,7 +668,6 @@ async function updateDayDetail() {
   const isToday = selectedDate.getTime() === today.getTime();
   const currentHour = new Date().getHours();
   
-  // Marcar horários passados como indisponíveis automaticamente
   if (isPastDate || isToday) {
     for (let hour = 8; hour <= 22; hour++) {
       if (isPastDate || (isToday && hour < currentHour)) {
@@ -743,7 +717,6 @@ async function updateDayDetail() {
     toggleAllCheckbox.addEventListener('change', async () => {
       const newValue = toggleAllCheckbox.checked;
       for (let hour = 8; hour <= 22; hour++) {
-        // Não alterar horários já passados do dia atual
         if (isToday && hour < currentHour) continue;
         currentDayAvailability[hour] = newValue;
       }
@@ -784,7 +757,6 @@ async function updateDayDetail() {
         currentDayAvailability[hour] = checkbox.checked;
         try {
           await saveDayAvailability(dateStr, currentDayAvailability);
-          // Atualizar imediatamente a exibição
           await updateDayDetail();
         } catch (error) {
           console.error('Erro ao salvar disponibilidade:', error);
@@ -827,8 +799,11 @@ async function updateDayDetail() {
         <div class="small">${a.clientName}${a.clientPhone ? ' • ' + a.clientPhone : ''}</div>
       `;
       
+      const statusDisplay = getStatusDisplay(a.status);
       const statusSelect = document.createElement('select');
       statusSelect.className = 'status-select-compact';
+      statusSelect.style.background = getStatusColor(a.status);
+      statusSelect.style.color = getStatusTextColor(a.status);
       statusSelect.innerHTML = `
         <option value="PENDENTE" ${a.status === 'PENDENTE' ? 'selected' : ''}>⏳ Pendente</option>
         <option value="CONFIRMADO" ${a.status === 'CONFIRMADO' ? 'selected' : ''}>✓ Confirmado</option>
@@ -879,11 +854,31 @@ async function updateDayDetail() {
   }
 }
 
+// Funções auxiliares para cores do status
+function getStatusColor(status) {
+  const colors = {
+    'PENDENTE': '#fef3c7',
+    'CONFIRMADO': '#d1fae5',
+    'REALIZADO': '#dbeafe',
+    'CANCELADO': '#fee2e2'
+  };
+  return colors[status] || '#f5f5f5';
+}
+
+function getStatusTextColor(status) {
+  const colors = {
+    'PENDENTE': '#92400e',
+    'CONFIRMADO': '#065f46',
+    'REALIZADO': '#1e40af',
+    'CANCELADO': '#991b1b'
+  };
+  return colors[status] || '#000000';
+}
+
 viewMode.addEventListener('change', () => {
   if (viewMode.value === 'week') {
     document.getElementById('calendarArea').classList.add('hidden');
     weekArea.classList.remove('hidden');
-    // Selecionar o dia atual automaticamente
     if (!selectedDate) {
       selectedDate = new Date();
       selectedDate.setHours(0, 0, 0, 0);
@@ -925,7 +920,6 @@ async function init() {
     computeFinance(allAppointments);
     loadAppointmentsUI();
     
-    // Selecionar o dia atual automaticamente
     selectedDate = new Date();
     selectedDate.setHours(0, 0, 0, 0);
     await updateDayDetail();
