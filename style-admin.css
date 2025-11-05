@@ -348,66 +348,64 @@ textarea {
   box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
 }
 
-/* ===== STATUS SELECT ===== */
-.status-select {
+/* ===== STATUS SELECT (ESTILO PADRONIZADO) ===== */
+.status-select,
+.status-select-compact {
   padding: 8px 12px;
-  border-radius: 10px;
-  border: 2px solid #e6f1ee;
-  background: white;
-  color: var(--text);
-  font-weight: 600;
-  font-size: 0.85rem;
+  border-radius: 12px;
+  border: none;
+  font-weight: 700;
+  font-size: 0.75rem;
   cursor: pointer;
   transition: all 0.2s ease;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%235e7674' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding-right: 32px;
   background-repeat: no-repeat;
   background-position: right 10px center;
-  padding-right: 32px;
 }
 
-.status-select:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(111, 183, 167, 0.1);
-}
-
-.status-select:hover {
-  border-color: var(--accent);
-}
-
-/* ===== STATUS SELECT COMPACTO (para listagem de horários) ===== */
 .status-select-compact {
+  font-size: 0.7rem;
   padding: 6px 10px;
-  border-radius: 8px;
-  border: 2px solid #e6f1ee;
-  background: white;
-  color: var(--text);
-  font-weight: 600;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%235e7674' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
   padding-right: 28px;
   min-width: 120px;
   max-width: 140px;
 }
 
+/* Cores dos status no select */
+.status-select option[value="PENDENTE"],
+.status-select-compact option[value="PENDENTE"] {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-select option[value="CONFIRMADO"],
+.status-select-compact option[value="CONFIRMADO"] {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-select option[value="REALIZADO"],
+.status-select-compact option[value="REALIZADO"] {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-select option[value="CANCELADO"],
+.status-select-compact option[value="CANCELADO"] {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-select:focus,
 .status-select-compact:focus {
   outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(111, 183, 167, 0.1);
+  box-shadow: 0 0 0 3px rgba(111, 183, 167, 0.15);
 }
 
-.status-select-compact:hover {
-  border-color: var(--accent);
-  background-color: #f9fffe;
-}
-
-/* ===== STATUS BADGE ===== */
+/* ===== STATUS BADGE (PADRONIZADO) ===== */
 .status-badge {
   display: inline-block;
   padding: 4px 10px;
@@ -416,6 +414,26 @@ textarea {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+}
+
+.status-badge.status-pendente {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge.status-confirmado {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge.status-realizado {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-badge.status-cancelado {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 /* ===== APPOINTMENT CARD ===== */
@@ -429,7 +447,7 @@ textarea {
   box-shadow: 0 12px 40px rgba(15, 43, 42, 0.12);
 }
 
-/* ===== CALENDÁRIO (IGUAL AO INDEX.HTML) ===== */
+/* ===== CALENDÁRIO ===== */
 .calendar-client {
   background: var(--card-gradient);
   border-radius: var(--radius-sm);
