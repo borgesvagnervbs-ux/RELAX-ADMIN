@@ -43,6 +43,7 @@ let unsubscribeAppointments = null;
 let currentDayAvailability = {};
 let currentAdminUser = null;
 let editingTypeId = null;
+let currentStatusFilter = 'todos';
 
 // ====================
 // AUTENTICAÇÃO ADMIN
@@ -332,6 +333,29 @@ function getStatusDisplay(status) {
   return displays[status] || { icon: '', text: status };
 }
 
+// Configurar data atual no filtro ao inicializar
+function setupDateFilter() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  filterDay.value = `${year}-${month}-${day}`;
+}
+
+// Configurar filtros de status
+function setupStatusFilters() {
+  const filterButtons = document.querySelectorAll('.filter-status-btn');
+  
+  filterButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentStatusFilter = btn.dataset.filter;
+      loadAppointmentsUI();
+    });
+  });
+}
+
 filterDay.addEventListener('change', loadAppointmentsUI);
 filterWeek.addEventListener('change', loadAppointmentsUI);
 
@@ -356,6 +380,7 @@ async function loadAppointmentsUI() {
 
     let filtered = allAppointments.slice();
     
+    // Filtro por data/período
     if (selectedDayVal) {
       filtered = filtered.filter(a => {
         const d = new Date(a.start);
@@ -370,7 +395,24 @@ async function loadAppointmentsUI() {
       filtered = filtered.filter(a => a.start >= nextStart.getTime() && a.start < nextEnd.getTime());
     }
 
+    // Filtro por status
+    if (currentStatusFilter !== 'todos') {
+      if (currentStatusFilter === 'pago') {
+        filtered = filtered.filter(a => a.paid === true);
+      } else if (currentStatusFilter === 'nao-pago') {
+        filtered = filtered.filter(a => a.paid === false);
+      } else {
+        filtered = filtered.filter(a => a.status === currentStatusFilter);
+      }
+    }
+
     filtered.sort((a, b) => a.start - b.start);
+    
+    if (filtered.length === 0) {
+      appointmentsList.innerHTML = '<div class="small" style="text-align:center;padding:32px;color:var(--text-secondary)">Nenhum agendamento encontrado com os filtros selecionados</div>';
+      computeFinance(allAppointments);
+      return;
+    }
     
     filtered.forEach(ap => {
       const div = document.createElement('div');
@@ -918,6 +960,10 @@ async function init() {
     loadTypesUI();
     renderCalendar();
     computeFinance(allAppointments);
+    
+    // Configurar data atual e filtros de status
+    setupDateFilter();
+    setupStatusFilters();
     loadAppointmentsUI();
     
     selectedDate = new Date();
