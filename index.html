@@ -123,8 +123,10 @@
 
         <section class="card hidden" id="tab-appointments">
           <h3>Agendamentos</h3>
-          <div class="small">Gerencie status e pagamentos</div>
-          <div class="row" style="margin-top:8px">
+          <div class="small">Filtre e gerencie seus agendamentos</div>
+          
+          <!-- Filtros de Data e Período -->
+          <div class="row" style="margin-top:12px">
             <input type="date" id="filterDay" class="input col">
             <select id="filterWeek" class="input" style="width:160px">
               <option value="all">Todas</option>
@@ -132,7 +134,40 @@
               <option value="next">Próxima semana</option>
             </select>
           </div>
-          <div id="appointmentsList" class="list" style="margin-top:12px"></div>
+
+          <!-- Filtros de Status -->
+          <div class="filter-status-container">
+            <button class="filter-status-btn active" data-filter="todos">
+              <span class="filter-icon">📋</span>
+              <span>Todos</span>
+            </button>
+            <button class="filter-status-btn" data-filter="PENDENTE">
+              <span class="filter-icon">⏳</span>
+              <span>Pendentes</span>
+            </button>
+            <button class="filter-status-btn" data-filter="CONFIRMADO">
+              <span class="filter-icon">✓</span>
+              <span>Confirmados</span>
+            </button>
+            <button class="filter-status-btn" data-filter="REALIZADO">
+              <span class="filter-icon">✓</span>
+              <span>Realizados</span>
+            </button>
+            <button class="filter-status-btn" data-filter="CANCELADO">
+              <span class="filter-icon">✗</span>
+              <span>Cancelados</span>
+            </button>
+            <button class="filter-status-btn" data-filter="pago">
+              <span class="filter-icon">💰</span>
+              <span>Pagos</span>
+            </button>
+            <button class="filter-status-btn" data-filter="nao-pago">
+              <span class="filter-icon">⏱</span>
+              <span>Não Pagos</span>
+            </button>
+          </div>
+
+          <div id="appointmentsList" class="list" style="margin-top:16px"></div>
         </section>
 
         <section class="card hidden" id="tab-finance">
@@ -170,5 +205,4 @@
   <script src="firebase-config.js"></script>
   <script src="admin.js"></script>
 </body>
-
 </html>
