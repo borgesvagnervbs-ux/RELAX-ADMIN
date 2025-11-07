@@ -1,4 +1,4 @@
-// admin.js - Painel Administrativo com Autenticação e Melhorias
+// admin.js - Painel Administrativo Completo
 
 // Elementos da UI
 const loginScreenAdmin = document.getElementById('loginScreenAdmin');
@@ -16,8 +16,6 @@ const typePrice = document.getElementById('typePrice');
 const typesList = document.getElementById('typesList');
 const btnAddType = document.getElementById('btnAddType');
 const btnReloadTypes = document.getElementById('btnReloadTypes');
-const filterDay = document.getElementById('filterDay');
-const filterWeek = document.getElementById('filterWeek');
 const appointmentsList = document.getElementById('appointmentsList');
 const sumDay = document.getElementById('sumDay');
 const sumMonth = document.getElementById('sumMonth');
@@ -44,6 +42,9 @@ let currentDayAvailability = {};
 let currentAdminUser = null;
 let editingTypeId = null;
 let currentStatusFilter = 'todos';
+let currentPeriodFilter = 'current-month';
+let customDateStart = null;
+let customDateEnd = null;
 
 // ====================
 // AUTENTICAÇÃO ADMIN
@@ -92,7 +93,6 @@ async function logoutAdmin() {
   }
 }
 
-// Listener de autenticação
 onAuthChange(async (user) => {
   if (user) {
     currentAdminUser = user;
@@ -316,13 +316,11 @@ async function loadTypesUI() {
 // AGENDAMENTOS
 // ====================
 
-// Função auxiliar para obter classe do status
 function getStatusBadgeClass(status) {
   const statusLower = status.toLowerCase();
   return `status-badge status-${statusLower}`;
 }
 
-// Função auxiliar para obter ícone e texto do status
 function getStatusDisplay(status) {
   const displays = {
     'PENDENTE': { icon: '⏳', text: 'PENDENTE' },
@@ -333,13 +331,48 @@ function getStatusDisplay(status) {
   return displays[status] || { icon: '', text: status };
 }
 
-// Configurar data atual no filtro ao inicializar
-function setupDateFilter() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  filterDay.value = `${year}-${month}-${day}`;
+// Configurar filtros de período
+function setupPeriodFilters() {
+  const periodButtons = document.querySelectorAll('.period-btn');
+  
+  periodButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      periodButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentPeriodFilter = btn.dataset.period;
+      
+      const customPeriodFilters = document.getElementById('customPeriodFilters');
+      if (currentPeriodFilter === 'custom') {
+        customPeriodFilters.classList.remove('hidden');
+      } else {
+        customPeriodFilters.classList.add('hidden');
+        customDateStart = null;
+        customDateEnd = null;
+        loadAppointmentsUI();
+      }
+    });
+  });
+}
+
+// Aplicar período personalizado
+function applyCustomPeriod() {
+  const startInput = document.getElementById('filterDateStart');
+  const endInput = document.getElementById('filterDateEnd');
+  
+  if (!startInput.value || !endInput.value) {
+    alert('Preencha ambas as datas!');
+    return;
+  }
+  
+  customDateStart = new Date(startInput.value + 'T00:00:00');
+  customDateEnd = new Date(endInput.value + 'T23:59:59');
+  
+  if (customDateStart > customDateEnd) {
+    alert('A data de início deve ser anterior à data de fim!');
+    return;
+  }
+  
+  loadAppointmentsUI();
 }
 
 // Configurar filtros de status
@@ -356,9 +389,6 @@ function setupStatusFilters() {
   });
 }
 
-filterDay.addEventListener('change', loadAppointmentsUI);
-filterWeek.addEventListener('change', loadAppointmentsUI);
-
 async function loadAppointmentsUI() {
   try {
     appointmentsList.innerHTML = '';
@@ -369,30 +399,28 @@ async function loadAppointmentsUI() {
       return;
     }
     
-    const selectedDayVal = filterDay.value ? new Date(filterDay.value) : null;
-    const weekFilter = filterWeek.value || 'all';
-    const now = new Date();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay());
-    startOfWeek.setHours(0, 0, 0, 0);
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 7);
-
     let filtered = allAppointments.slice();
     
-    // Filtro por data/período
-    if (selectedDayVal) {
-      filtered = filtered.filter(a => {
-        const d = new Date(a.start);
-        return d.toDateString() === selectedDayVal.toDateString();
-      });
-    } else if (weekFilter === 'current') {
+    // Filtro por período
+    if (currentPeriodFilter === 'current-week') {
+      const now = new Date();
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 7);
+      
       filtered = filtered.filter(a => a.start >= startOfWeek.getTime() && a.start < endOfWeek.getTime());
-    } else if (weekFilter === 'next') {
-      const nextStart = new Date(endOfWeek);
-      const nextEnd = new Date(nextStart);
-      nextEnd.setDate(nextStart.getDate() + 7);
-      filtered = filtered.filter(a => a.start >= nextStart.getTime() && a.start < nextEnd.getTime());
+    } else if (currentPeriodFilter === 'current-month') {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).getTime();
+      
+      filtered = filtered.filter(a => a.start >= startOfMonth && a.start <= endOfMonth);
+    } else if (currentPeriodFilter === 'custom' && customDateStart && customDateEnd) {
+      filtered = filtered.filter(a => {
+        return a.start >= customDateStart.getTime() && a.start <= customDateEnd.getTime();
+      });
     }
 
     // Filtro por status
@@ -449,6 +477,49 @@ async function loadAppointmentsUI() {
       right.style.flexDirection = 'column';
       right.style.gap = '8px';
       
+      // Select de Status
+      const statusSelect = document.createElement('select');
+      statusSelect.className = 'status-select';
+      statusSelect.style.background = getStatusColor(ap.status);
+      statusSelect.style.color = getStatusTextColor(ap.status);
+      statusSelect.innerHTML = `
+        <option value="PENDENTE" ${ap.status === 'PENDENTE' ? 'selected' : ''}>⏳ Pendente</option>
+        <option value="CONFIRMADO" ${ap.status === 'CONFIRMADO' ? 'selected' : ''}>✓ Confirmado</option>
+        <option value="REALIZADO" ${ap.status === 'REALIZADO' ? 'selected' : ''}>✓ Realizado</option>
+        <option value="CANCELADO" ${ap.status === 'CANCELADO' ? 'selected' : ''}>✗ Cancelado</option>
+      `;
+      statusSelect.onchange = async () => {
+        const newStatus = statusSelect.value;
+        if (newStatus === 'CANCELADO' && ap.status !== 'CANCELADO') {
+          const reason = prompt('Informe o motivo do cancelamento (obrigatório):');
+          if (reason && reason.trim()) {
+            ap.status = newStatus;
+            ap.cancellationReason = reason.trim();
+            try {
+              await saveAppointment(ap);
+              loadAppointmentsUI();
+            } catch (error) {
+              console.error('Erro ao atualizar status:', error);
+              alert('Erro ao atualizar status.');
+            }
+          } else if (reason !== null) {
+            alert('O motivo do cancelamento é obrigatório!');
+            statusSelect.value = ap.status;
+          } else {
+            statusSelect.value = ap.status;
+          }
+        } else {
+          ap.status = newStatus;
+          try {
+            await saveAppointment(ap);
+            loadAppointmentsUI();
+          } catch (error) {
+            console.error('Erro ao atualizar status:', error);
+            alert('Erro ao atualizar status.');
+          }
+        }
+      };
+      
       const btnPaid = document.createElement('button');
       btnPaid.className = ap.paid ? 'btn btn-success btn-sm' : 'btn btn-ghost btn-sm';
       btnPaid.textContent = ap.paid ? '✓ Pago' : 'Marcar pago';
@@ -463,6 +534,7 @@ async function loadAppointmentsUI() {
         }
       };
       
+      right.appendChild(statusSelect);
       right.appendChild(btnPaid);
       
       div.style.display = 'flex';
@@ -576,133 +648,6 @@ function renderCalendar() {
     emptyCell.className = 'calendar-day empty';
     daysGrid.appendChild(emptyCell);
   }
-  
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dayDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-    dayDate.setHours(0, 0, 0, 0);
-    
-    const dayCell = document.createElement('div');
-    dayCell.className = 'calendar-day available';
-    dayCell.textContent = day;
-    
-    if (dayDate.getTime() === today.getTime()) {
-      dayCell.classList.add('today');
-    }
-    
-    if (selectedDate && dayDate.getTime() === selectedDate.getTime()) {
-      dayCell.classList.add('selected');
-    }
-    
-    const dayAppts = allAppointments.filter(a => {
-      const d = new Date(a.start);
-      return d.toDateString() === dayDate.toDateString();
-    });
-    
-    if (dayAppts.length > 0) {
-      const badge = document.createElement('div');
-      badge.className = 'day-badge';
-      badge.textContent = dayAppts.length;
-      dayCell.appendChild(badge);
-    }
-    
-    dayCell.onclick = () => selectDate(dayDate);
-    
-    daysGrid.appendChild(dayCell);
-  }
-  
-  calendarClient.appendChild(daysGrid);
-}
-
-function renderWeek() {
-  weekContainer.innerHTML = '';
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  for (let i = 0; i <= 6; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    
-    const div = document.createElement('div');
-    div.className = 'week-day card';
-    
-    const isSelected = (selectedDate && selectedDate.toDateString() === d.toDateString());
-    const isToday = (d.toDateString() === today.toDateString());
-    
-    if (isSelected) div.classList.add('selected');
-    if (isToday) div.classList.add('today');
-    
-    const header = document.createElement('div');
-    header.style.fontWeight = '800';
-    header.style.marginBottom = '8px';
-    header.textContent = d.toLocaleDateString('pt-BR', {weekday:'short', day:'numeric', month:'short'});
-    div.appendChild(header);
-    
-    const appts = allAppointments.filter(a => {
-      const dd = new Date(a.start);
-      return dd.toDateString() === d.toDateString();
-    }).sort((a, b) => a.start - b.start);
-    
-    if (appts.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'small';
-      empty.style.fontStyle = 'italic';
-      empty.style.color = '#9ca3af';
-      empty.textContent = 'Sem reservas';
-      div.appendChild(empty);
-    } else {
-      appts.slice(0, 3).forEach(a => {
-        const el = document.createElement('div');
-        el.className = 'small';
-        const dd = new Date(a.start);
-        el.textContent = `${dd.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} • ${a.typeName}`;
-        div.appendChild(el);
-      });
-      
-      if (appts.length > 3) {
-        const more = document.createElement('div');
-        more.className = 'small';
-        more.style.fontWeight = '600';
-        more.style.marginTop = '4px';
-        more.textContent = `+ ${appts.length - 3} mais`;
-        div.appendChild(more);
-      }
-    }
-    
-    div.addEventListener('click', () => selectDate(d));
-    weekContainer.appendChild(div);
-  }
-}
-
-async function selectDate(date) {
-  selectedDate = new Date(date);
-  selectedDate.setHours(0, 0, 0, 0);
-  
-  if (viewMode.value === 'month') {
-    renderCalendar();
-  } else {
-    renderWeek();
-  }
-  
-  await updateDayDetail();
-}
-
-async function updateDayDetail() {
-  if (!selectedDate) {
-    dayDetail.classList.add('hidden');
-    return;
-  }
-  
-  dayDetail.classList.remove('hidden');
-  
-  selectedDayTitle.textContent = selectedDate.toLocaleDateString('pt-BR', {weekday:'long', day:'2-digit', month:'long', year:'numeric'});
-  selectedDaySub.textContent = '';
-  hourlyList.innerHTML = '';
-  
-  const dateStr = toDateStr(selectedDate);
-  currentDayAvailability = await getDayAvailability(dateStr);
   
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -896,7 +841,6 @@ async function updateDayDetail() {
   }
 }
 
-// Funções auxiliares para cores do status
 function getStatusColor(status) {
   const colors = {
     'PENDENTE': '#fef3c7',
@@ -961,8 +905,7 @@ async function init() {
     renderCalendar();
     computeFinance(allAppointments);
     
-    // Configurar data atual e filtros de status
-    setupDateFilter();
+    setupPeriodFilters();
     setupStatusFilters();
     loadAppointmentsUI();
     
@@ -1000,3 +943,130 @@ window.addEventListener('beforeunload', () => {
   if (unsubscribeTypes) unsubscribeTypes();
   if (unsubscribeAppointments) unsubscribeAppointments();
 });
+  
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dayDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+    dayDate.setHours(0, 0, 0, 0);
+    
+    const dayCell = document.createElement('div');
+    dayCell.className = 'calendar-day available';
+    dayCell.textContent = day;
+    
+    if (dayDate.getTime() === today.getTime()) {
+      dayCell.classList.add('today');
+    }
+    
+    if (selectedDate && dayDate.getTime() === selectedDate.getTime()) {
+      dayCell.classList.add('selected');
+    }
+    
+    const dayAppts = allAppointments.filter(a => {
+      const d = new Date(a.start);
+      return d.toDateString() === dayDate.toDateString();
+    });
+    
+    if (dayAppts.length > 0) {
+      const badge = document.createElement('div');
+      badge.className = 'day-badge';
+      badge.textContent = dayAppts.length;
+      dayCell.appendChild(badge);
+    }
+    
+    dayCell.onclick = () => selectDate(dayDate);
+    
+    daysGrid.appendChild(dayCell);
+  }
+  
+  calendarClient.appendChild(daysGrid);
+}
+
+function renderWeek() {
+  weekContainer.innerHTML = '';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  for (let i = 0; i <= 6; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    
+    const div = document.createElement('div');
+    div.className = 'week-day card';
+    
+    const isSelected = (selectedDate && selectedDate.toDateString() === d.toDateString());
+    const isToday = (d.toDateString() === today.toDateString());
+    
+    if (isSelected) div.classList.add('selected');
+    if (isToday) div.classList.add('today');
+    
+    const header = document.createElement('div');
+    header.style.fontWeight = '800';
+    header.style.marginBottom = '8px';
+    header.textContent = d.toLocaleDateString('pt-BR', {weekday:'short', day:'numeric', month:'short'});
+    div.appendChild(header);
+    
+    const appts = allAppointments.filter(a => {
+      const dd = new Date(a.start);
+      return dd.toDateString() === d.toDateString();
+    }).sort((a, b) => a.start - b.start);
+    
+    if (appts.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'small';
+      empty.style.fontStyle = 'italic';
+      empty.style.color = '#9ca3af';
+      empty.textContent = 'Sem reservas';
+      div.appendChild(empty);
+    } else {
+      appts.slice(0, 3).forEach(a => {
+        const el = document.createElement('div');
+        el.className = 'small';
+        const dd = new Date(a.start);
+        el.textContent = `${dd.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} • ${a.typeName}`;
+        div.appendChild(el);
+      });
+      
+      if (appts.length > 3) {
+        const more = document.createElement('div');
+        more.className = 'small';
+        more.style.fontWeight = '600';
+        more.style.marginTop = '4px';
+        more.textContent = `+ ${appts.length - 3} mais`;
+        div.appendChild(more);
+      }
+    }
+    
+    div.addEventListener('click', () => selectDate(d));
+    weekContainer.appendChild(div);
+  }
+}
+
+async function selectDate(date) {
+  selectedDate = new Date(date);
+  selectedDate.setHours(0, 0, 0, 0);
+  
+  if (viewMode.value === 'month') {
+    renderCalendar();
+  } else {
+    renderWeek();
+  }
+  
+  await updateDayDetail();
+}
+
+async function updateDayDetail() {
+  if (!selectedDate) {
+    dayDetail.classList.add('hidden');
+    return;
+  }
+  
+  dayDetail.classList.remove('hidden');
+  
+  selectedDayTitle.textContent = selectedDate.toLocaleDateString('pt-BR', {weekday:'long', day:'2-digit', month:'long', year:'numeric'});
+  selectedDaySub.textContent = '';
+  hourlyList.innerHTML = '';
+  
+  const dateStr = toDateStr(selectedDate);
+  currentDayAvailability = await getDayAvailability(dateStr);
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
