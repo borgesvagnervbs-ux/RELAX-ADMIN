@@ -975,7 +975,6 @@ window.addEventListener('beforeunload', () => {
     dayCell.onclick = () => selectDate(dayDate);
     
     daysGrid.appendChild(dayCell);
-  }
   
   calendarClient.appendChild(daysGrid);
 }
