@@ -125,14 +125,35 @@
           <h3>Agendamentos</h3>
           <div class="small">Filtre e gerencie seus agendamentos</div>
           
-          <!-- Filtros de Data e Período -->
-          <div class="row" style="margin-top:12px">
-            <input type="date" id="filterDay" class="input col">
-            <select id="filterWeek" class="input" style="width:160px">
-              <option value="all">Todas</option>
-              <option value="current">Semana atual</option>
-              <option value="next">Próxima semana</option>
-            </select>
+          <!-- Filtros de Período -->
+          <div class="period-filters">
+            <button class="period-btn" data-period="current-week">
+              <span class="period-icon">📅</span>
+              <span>Semana Atual</span>
+            </button>
+            <button class="period-btn active" data-period="current-month">
+              <span class="period-icon">📆</span>
+              <span>Mês Atual</span>
+            </button>
+            <button class="period-btn" data-period="custom">
+              <span class="period-icon">🗓️</span>
+              <span>Período Personalizado</span>
+            </button>
+          </div>
+
+          <!-- Filtros de Data Personalizados (inicialmente oculto) -->
+          <div id="customPeriodFilters" class="hidden" style="margin-top:12px">
+            <div class="row">
+              <div class="col">
+                <label class="small" style="display:block;margin-bottom:6px;font-weight:600">Data Início:</label>
+                <input type="date" id="filterDateStart" class="input">
+              </div>
+              <div class="col">
+                <label class="small" style="display:block;margin-bottom:6px;font-weight:600">Data Fim:</label>
+                <input type="date" id="filterDateEnd" class="input">
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="applyCustomPeriod()" style="margin-top:8px">Aplicar Filtro</button>
           </div>
 
           <!-- Filtros de Status Modernos -->
