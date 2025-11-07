@@ -348,6 +348,56 @@ textarea {
   box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
 }
 
+/* ===== FILTROS DE PERÍODO ===== */
+.period-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.period-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 12px;
+  border-radius: 14px;
+  border: 2px solid #e6f1ee;
+  background: linear-gradient(135deg, #ffffff 0%, #fbfffe 100%);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(15, 43, 42, 0.04);
+  min-height: 85px;
+}
+
+.period-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(15, 43, 42, 0.1);
+  border-color: var(--accent);
+}
+
+.period-btn.active {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  color: white;
+  border-color: var(--primary);
+  box-shadow: 0 6px 20px rgba(111, 183, 167, 0.3);
+  transform: translateY(-2px);
+}
+
+.period-icon {
+  font-size: 1.8rem;
+  transition: all 0.3s ease;
+}
+
+.period-btn:hover .period-icon {
+  transform: scale(1.1);
+}
+
 /* ===== FILTROS DE STATUS MODERNOS ===== */
 .filter-status-container {
   display: grid;
@@ -406,7 +456,6 @@ textarea {
   filter: grayscale(0);
 }
 
-/* Estados ativos dos filtros */
 .filter-status-btn.active {
   border-color: var(--primary);
   background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
@@ -424,7 +473,6 @@ textarea {
   transform: scale(1.1);
 }
 
-/* Cores específicas quando ativo */
 .filter-status-btn[data-filter="PENDENTE"].active {
   background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
   border-color: #f59e0b;
@@ -461,7 +509,6 @@ textarea {
   box-shadow: 0 8px 24px rgba(107, 114, 128, 0.4);
 }
 
-/* Responsivo para mobile */
 @media (max-width: 640px) {
   .filter-status-container {
     grid-template-columns: repeat(2, 1fr);
@@ -476,9 +523,13 @@ textarea {
   .filter-status-btn .filter-icon {
     font-size: 1.75rem;
   }
+  
+  .period-filters {
+    grid-template-columns: 1fr;
+  }
 }
 
-/* ===== STATUS SELECT (ESTILO PADRONIZADO) ===== */
+/* ===== STATUS SELECT ===== */
 .status-select,
 .status-select-compact {
   padding: 8px 12px;
@@ -504,37 +555,13 @@ textarea {
   max-width: 140px;
 }
 
-.status-select option[value="PENDENTE"],
-.status-select-compact option[value="PENDENTE"] {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.status-select option[value="CONFIRMADO"],
-.status-select-compact option[value="CONFIRMADO"] {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.status-select option[value="REALIZADO"],
-.status-select-compact option[value="REALIZADO"] {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.status-select option[value="CANCELADO"],
-.status-select-compact option[value="CANCELADO"] {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
 .status-select:focus,
 .status-select-compact:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(111, 183, 167, 0.15);
 }
 
-/* ===== STATUS BADGE (PADRONIZADO) ===== */
+/* ===== STATUS BADGE ===== */
 .status-badge {
   display: inline-block;
   padding: 4px 10px;
@@ -1056,7 +1083,8 @@ textarea {
   .sidebar,
   .btn,
   .fab,
-  .filter-status-container {
+  .filter-status-container,
+  .period-filters {
     display: none !important;
   }
 
