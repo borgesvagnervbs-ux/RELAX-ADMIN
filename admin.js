@@ -978,7 +978,6 @@ window.addEventListener('beforeunload', () => {
   }
   
   calendarClient.appendChild(daysGrid);
-}
 
 function renderWeek() {
   weekContainer.innerHTML = '';
