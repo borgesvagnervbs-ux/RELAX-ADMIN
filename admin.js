@@ -47,6 +47,28 @@ let customDateStart = null;
 let customDateEnd = null;
 
 // ====================
+// FUNÇÕES AUXILIARES
+// ====================
+
+function formatMoney(value) {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(value);
+}
+
+function toDateStr(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+// ====================
 // AUTENTICAÇÃO ADMIN
 // ====================
 
@@ -331,7 +353,6 @@ function getStatusDisplay(status) {
   return displays[status] || { icon: '', text: status };
 }
 
-// Configurar filtros de período
 function setupPeriodFilters() {
   const periodButtons = document.querySelectorAll('.period-btn');
   
@@ -354,7 +375,6 @@ function setupPeriodFilters() {
   });
 }
 
-// Aplicar período personalizado
 function applyCustomPeriod() {
   const startInput = document.getElementById('filterDateStart');
   const endInput = document.getElementById('filterDateEnd');
@@ -375,7 +395,6 @@ function applyCustomPeriod() {
   loadAppointmentsUI();
 }
 
-// Configurar filtros de status
 function setupStatusFilters() {
   const filterButtons = document.querySelectorAll('.filter-status-btn');
   
@@ -477,7 +496,6 @@ async function loadAppointmentsUI() {
       right.style.flexDirection = 'column';
       right.style.gap = '8px';
       
-      // Select de Status
       const statusSelect = document.createElement('select');
       statusSelect.className = 'status-select';
       statusSelect.style.background = getStatusColor(ap.status);
@@ -594,6 +612,26 @@ function computeFinance(list) {
 // CALENDÁRIO
 // ====================
 
+function getStatusColor(status) {
+  const colors = {
+    'PENDENTE': '#fef3c7',
+    'CONFIRMADO': '#d1fae5',
+    'REALIZADO': '#dbeafe',
+    'CANCELADO': '#fee2e2'
+  };
+  return colors[status] || '#f5f5f5';
+}
+
+function getStatusTextColor(status) {
+  const colors = {
+    'PENDENTE': '#92400e',
+    'CONFIRMADO': '#065f46',
+    'REALIZADO': '#1e40af',
+    'CANCELADO': '#991b1b'
+  };
+  return colors[status] || '#000000';
+}
+
 function renderCalendar() {
   calendarClient.innerHTML = '';
   
@@ -651,298 +689,6 @@ function renderCalendar() {
   
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const isPastDate = selectedDate < today;
-  const isToday = selectedDate.getTime() === today.getTime();
-  const currentHour = new Date().getHours();
-  
-  if (isPastDate || isToday) {
-    for (let hour = 8; hour <= 22; hour++) {
-      if (isPastDate || (isToday && hour < currentHour)) {
-        const startTs = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), hour, 0, 0, 0).getTime();
-        const endTs = startTs + 60 * 60 * 1000;
-        const appts = allAppointments.filter(a => a.start >= startTs && a.start < endTs);
-        
-        if (appts.length === 0) {
-          currentDayAvailability[hour] = false;
-        }
-      }
-    }
-  }
-  
-  const toggleAllRow = document.createElement('div');
-  toggleAllRow.style.marginBottom = '16px';
-  toggleAllRow.style.display = 'flex';
-  toggleAllRow.style.alignItems = 'center';
-  toggleAllRow.style.gap = '12px';
-  toggleAllRow.style.padding = '12px';
-  toggleAllRow.style.background = 'linear-gradient(135deg, #e6fff2, #f0fff8)';
-  toggleAllRow.style.borderRadius = '12px';
-  
-  const toggleAllCheckbox = document.createElement('input');
-  toggleAllCheckbox.type = 'checkbox';
-  toggleAllCheckbox.id = 'toggleAll';
-  toggleAllCheckbox.style.width = '20px';
-  toggleAllCheckbox.style.height = '20px';
-  toggleAllCheckbox.style.cursor = 'pointer';
-  
-  const allEnabled = Object.values(currentDayAvailability).every(v => v === true);
-  toggleAllCheckbox.checked = allEnabled;
-  
-  if (isPastDate) {
-    toggleAllCheckbox.disabled = true;
-    toggleAllCheckbox.style.cursor = 'not-allowed';
-  }
-  
-  const toggleAllLabel = document.createElement('label');
-  toggleAllLabel.htmlFor = 'toggleAll';
-  toggleAllLabel.style.fontWeight = '700';
-  toggleAllLabel.style.cursor = isPastDate ? 'not-allowed' : 'pointer';
-  toggleAllLabel.style.flex = '1';
-  toggleAllLabel.textContent = 'Habilitar/Desabilitar todos os horários';
-  
-  if (!isPastDate) {
-    toggleAllCheckbox.addEventListener('change', async () => {
-      const newValue = toggleAllCheckbox.checked;
-      for (let hour = 8; hour <= 22; hour++) {
-        if (isToday && hour < currentHour) continue;
-        currentDayAvailability[hour] = newValue;
-      }
-      try {
-        await saveDayAvailability(dateStr, currentDayAvailability);
-        updateDayDetail();
-      } catch (error) {
-        console.error('Erro ao salvar disponibilidade:', error);
-        alert('Erro ao atualizar disponibilidade');
-      }
-    });
-  }
-  
-  toggleAllRow.appendChild(toggleAllCheckbox);
-  toggleAllRow.appendChild(toggleAllLabel);
-  hourlyList.appendChild(toggleAllRow);
-  
-  for (let hour = 8; hour <= 22; hour++) {
-    const row = document.createElement('div');
-    row.className = 'hour-row';
-    row.style.display = 'flex';
-    row.style.alignItems = 'center';
-    row.style.gap = '10px';
-    
-    const isPastHour = isPastDate || (isToday && hour < currentHour);
-    
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.checked = currentDayAvailability[hour] !== false;
-    checkbox.style.width = '20px';
-    checkbox.style.height = '20px';
-    checkbox.style.cursor = isPastHour ? 'not-allowed' : 'pointer';
-    checkbox.style.flexShrink = '0';
-    checkbox.disabled = isPastHour;
-    
-    if (!isPastHour) {
-      checkbox.addEventListener('change', async () => {
-        currentDayAvailability[hour] = checkbox.checked;
-        try {
-          await saveDayAvailability(dateStr, currentDayAvailability);
-          await updateDayDetail();
-        } catch (error) {
-          console.error('Erro ao salvar disponibilidade:', error);
-          alert('Erro ao atualizar disponibilidade');
-        }
-      });
-    }
-    
-    const time = document.createElement('div');
-    time.className = 'hour-time';
-    time.textContent = (hour < 10 ? '0' + hour : hour) + ':00';
-    
-    const slot = document.createElement('div');
-    slot.className = 'hour-slot card';
-    slot.style.flex = '1';
-    
-    const startTs = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), hour, 0, 0, 0).getTime();
-    const endTs = startTs + 60 * 60 * 1000;
-    
-    const appts = allAppointments.filter(a => a.start >= startTs && a.start < endTs);
-    
-    if (appts.length === 0) {
-      const statusText = currentDayAvailability[hour] !== false ? 'Livre' : 'Indisponível';
-      const statusColor = currentDayAvailability[hour] !== false ? '' : 'color: #ef4444; font-weight: 600;';
-      slot.innerHTML = `<div class="slot-empty" style="${statusColor}">${statusText}</div>`;
-    } else {
-      const a = appts[0];
-      const booked = document.createElement('div');
-      booked.className = 'slot-booked';
-      booked.style.display = 'flex';
-      booked.style.justifyContent = 'space-between';
-      booked.style.alignItems = 'center';
-      booked.style.gap = '12px';
-      
-      const leftInfo = document.createElement('div');
-      leftInfo.style.flex = '1';
-      leftInfo.style.minWidth = '0';
-      leftInfo.innerHTML = `
-        <div style="font-weight:700;margin-bottom:4px">${a.typeName}</div>
-        <div class="small">${a.clientName}${a.clientPhone ? ' • ' + a.clientPhone : ''}</div>
-      `;
-      
-      const statusDisplay = getStatusDisplay(a.status);
-      const statusSelect = document.createElement('select');
-      statusSelect.className = 'status-select-compact';
-      statusSelect.style.background = getStatusColor(a.status);
-      statusSelect.style.color = getStatusTextColor(a.status);
-      statusSelect.innerHTML = `
-        <option value="PENDENTE" ${a.status === 'PENDENTE' ? 'selected' : ''}>⏳ Pendente</option>
-        <option value="CONFIRMADO" ${a.status === 'CONFIRMADO' ? 'selected' : ''}>✓ Confirmado</option>
-        <option value="REALIZADO" ${a.status === 'REALIZADO' ? 'selected' : ''}>✓ Realizado</option>
-        <option value="CANCELADO" ${a.status === 'CANCELADO' ? 'selected' : ''}>✗ Cancelado</option>
-      `;
-      statusSelect.onchange = async () => {
-        const newStatus = statusSelect.value;
-        if (newStatus === 'CANCELADO' && a.status !== 'CANCELADO') {
-          const reason = prompt('Informe o motivo do cancelamento (obrigatório):');
-          if (reason && reason.trim()) {
-            a.status = newStatus;
-            a.cancellationReason = reason.trim();
-            try {
-              await saveAppointment(a);
-              updateDayDetail();
-            } catch (error) {
-              console.error('Erro ao atualizar status:', error);
-              alert('Erro ao atualizar status.');
-            }
-          } else if (reason !== null) {
-            alert('O motivo do cancelamento é obrigatório!');
-            statusSelect.value = a.status;
-          } else {
-            statusSelect.value = a.status;
-          }
-        } else {
-          a.status = newStatus;
-          try {
-            await saveAppointment(a);
-            updateDayDetail();
-          } catch (error) {
-            console.error('Erro ao atualizar status:', error);
-            alert('Erro ao atualizar status.');
-          }
-        }
-      };
-      
-      booked.appendChild(leftInfo);
-      booked.appendChild(statusSelect);
-      slot.appendChild(booked);
-    }
-    
-    row.appendChild(checkbox);
-    row.appendChild(time);
-    row.appendChild(slot);
-    hourlyList.appendChild(row);
-  }
-}
-
-function getStatusColor(status) {
-  const colors = {
-    'PENDENTE': '#fef3c7',
-    'CONFIRMADO': '#d1fae5',
-    'REALIZADO': '#dbeafe',
-    'CANCELADO': '#fee2e2'
-  };
-  return colors[status] || '#f5f5f5';
-}
-
-function getStatusTextColor(status) {
-  const colors = {
-    'PENDENTE': '#92400e',
-    'CONFIRMADO': '#065f46',
-    'REALIZADO': '#1e40af',
-    'CANCELADO': '#991b1b'
-  };
-  return colors[status] || '#000000';
-}
-
-viewMode.addEventListener('change', () => {
-  if (viewMode.value === 'week') {
-    document.getElementById('calendarArea').classList.add('hidden');
-    weekArea.classList.remove('hidden');
-    if (!selectedDate) {
-      selectedDate = new Date();
-      selectedDate.setHours(0, 0, 0, 0);
-    }
-    renderWeek();
-    updateDayDetail();
-  } else {
-    weekArea.classList.add('hidden');
-    document.getElementById('calendarArea').classList.remove('hidden');
-    renderCalendar();
-  }
-});
-
-btnToday.addEventListener('click', () => {
-  currentMonth = new Date();
-  selectedDate = new Date();
-  selectedDate.setHours(0, 0, 0, 0);
-  
-  if (viewMode.value === 'week') {
-    renderWeek();
-  } else {
-    renderCalendar();
-  }
-  
-  updateDayDetail();
-});
-
-// ====================
-// INICIALIZAÇÃO
-// ====================
-
-async function init() {
-  try {
-    allTypes = await getAllTypes();
-    allAppointments = await getAllAppointments();
-    
-    loadTypesUI();
-    renderCalendar();
-    computeFinance(allAppointments);
-    
-    setupPeriodFilters();
-    setupStatusFilters();
-    loadAppointmentsUI();
-    
-    selectedDate = new Date();
-    selectedDate.setHours(0, 0, 0, 0);
-    await updateDayDetail();
-
-    unsubscribeTypes = onTypesChange(types => {
-      allTypes = types;
-      loadTypesUI();
-    });
-
-    unsubscribeAppointments = onAppointmentsChange(appointments => {
-      allAppointments = appointments;
-      computeFinance(appointments);
-      loadAppointmentsUI();
-      if (viewMode.value === 'week') {
-        renderWeek();
-      } else {
-        renderCalendar();
-      }
-      if (selectedDate) {
-        updateDayDetail();
-      }
-    });
-
-    console.log('✅ Painel administrativo conectado ao Firebase!');
-  } catch (error) {
-    console.error('Erro na inicialização:', error);
-    alert('Erro ao conectar com o servidor. Verifique a configuração do Firebase.');
-  }
-}
-
-window.addEventListener('beforeunload', () => {
-  if (unsubscribeTypes) unsubscribeTypes();
-  if (unsubscribeAppointments) unsubscribeAppointments();
-});
   
   for (let day = 1; day <= daysInMonth; day++) {
     const dayDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
@@ -978,6 +724,7 @@ window.addEventListener('beforeunload', () => {
   }
   
   calendarClient.appendChild(daysGrid);
+}
 
 function renderWeek() {
   weekContainer.innerHTML = '';
@@ -1069,3 +816,277 @@ async function updateDayDetail() {
   
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const isPastDate = selectedDate < today;
+  const isToday = selectedDate.getTime() === today.getTime();
+  const currentHour = new Date().getHours();
+  
+  // Desabilitar horários passados automaticamente
+  if (isPastDate || isToday) {
+    for (let hour = 8; hour <= 22; hour++) {
+      if (isPastDate || (isToday && hour < currentHour)) {
+        const startTs = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), hour, 0, 0, 0).getTime();
+        const endTs = startTs + 60 * 60 * 1000;
+        const appts = allAppointments.filter(a => a.start >= startTs && a.start < endTs);
+        
+        if (appts.length === 0) {
+          currentDayAvailability[hour] = false;
+        }
+      }
+    }
+  }
+  
+  // Toggle All Row
+  const toggleAllRow = document.createElement('div');
+  toggleAllRow.style.marginBottom = '16px';
+  toggleAllRow.style.display = 'flex';
+  toggleAllRow.style.alignItems = 'center';
+  toggleAllRow.style.gap = '12px';
+  toggleAllRow.style.padding = '12px';
+  toggleAllRow.style.background = 'linear-gradient(135deg, #e6fff2, #f0fff8)';
+  toggleAllRow.style.borderRadius = '12px';
+  
+  const toggleAllCheckbox = document.createElement('input');
+  toggleAllCheckbox.type = 'checkbox';
+  toggleAllCheckbox.id = 'toggleAll';
+  toggleAllCheckbox.style.width = '20px';
+  toggleAllCheckbox.style.height = '20px';
+  toggleAllCheckbox.style.cursor = 'pointer';
+  
+  const allEnabled = Object.values(currentDayAvailability).every(v => v === true);
+  toggleAllCheckbox.checked = allEnabled;
+  
+  if (isPastDate) {
+    toggleAllCheckbox.disabled = true;
+    toggleAllCheckbox.style.cursor = 'not-allowed';
+  }
+  
+  const toggleAllLabel = document.createElement('label');
+  toggleAllLabel.htmlFor = 'toggleAll';
+  toggleAllLabel.style.fontWeight = '700';
+  toggleAllLabel.style.cursor = isPastDate ? 'not-allowed' : 'pointer';
+  toggleAllLabel.style.flex = '1';
+  toggleAllLabel.textContent = 'Habilitar/Desabilitar todos os horários';
+  
+  if (!isPastDate) {
+    toggleAllCheckbox.addEventListener('change', async () => {
+      const newValue = toggleAllCheckbox.checked;
+      for (let hour = 8; hour <= 22; hour++) {
+        if (isToday && hour < currentHour) continue;
+        currentDayAvailability[hour] = newValue;
+      }
+      try {
+        await saveDayAvailability(dateStr, currentDayAvailability);
+        await updateDayDetail();
+      } catch (error) {
+        console.error('Erro ao salvar disponibilidade:', error);
+        alert('Erro ao atualizar disponibilidade');
+      }
+    });
+  }
+  
+  toggleAllRow.appendChild(toggleAllCheckbox);
+  toggleAllRow.appendChild(toggleAllLabel);
+  hourlyList.appendChild(toggleAllRow);
+  
+  // Renderizar cada horário
+  for (let hour = 8; hour <= 22; hour++) {
+    const row = document.createElement('div');
+    row.className = 'hour-row';
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    row.style.gap = '10px';
+    
+    const isPastHour = isPastDate || (isToday && hour < currentHour);
+    
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = currentDayAvailability[hour] !== false;
+    checkbox.style.width = '20px';
+    checkbox.style.height = '20px';
+    checkbox.style.cursor = isPastHour ? 'not-allowed' : 'pointer';
+    checkbox.style.flexShrink = '0';
+    checkbox.disabled = isPastHour;
+    
+    if (!isPastHour) {
+      checkbox.addEventListener('change', async () => {
+        currentDayAvailability[hour] = checkbox.checked;
+        try {
+          await saveDayAvailability(dateStr, currentDayAvailability);
+          await updateDayDetail();
+        } catch (error) {
+          console.error('Erro ao salvar disponibilidade:', error);
+          alert('Erro ao atualizar disponibilidade');
+        }
+      });
+    }
+    
+    const time = document.createElement('div');
+    time.className = 'hour-time';
+    time.textContent = (hour < 10 ? '0' + hour : hour) + ':00';
+    
+    const slot = document.createElement('div');
+    slot.className = 'hour-slot card';
+    slot.style.flex = '1';
+    
+    const startTs = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), hour, 0, 0, 0).getTime();
+    const endTs = startTs + 60 * 60 * 1000;
+    
+    const appts = allAppointments.filter(a => a.start >= startTs && a.start < endTs);
+    
+    if (appts.length === 0) {
+      const statusText = currentDayAvailability[hour] !== false ? 'Livre' : 'Indisponível';
+      const statusColor = currentDayAvailability[hour] !== false ? '' : 'color: #ef4444; font-weight: 600;';
+      slot.innerHTML = `<div class="slot-empty" style="${statusColor}">${statusText}</div>`;
+    } else {
+      const a = appts[0];
+      const booked = document.createElement('div');
+      booked.className = 'slot-booked';
+      booked.style.display = 'flex';
+      booked.style.justifyContent = 'space-between';
+      booked.style.alignItems = 'center';
+      booked.style.gap = '12px';
+      
+      const leftInfo = document.createElement('div');
+      leftInfo.style.flex = '1';
+      leftInfo.style.minWidth = '0';
+      leftInfo.innerHTML = `
+        <div style="font-weight:700;margin-bottom:4px">${a.typeName}</div>
+        <div class="small">${a.clientName}${a.clientPhone ? ' • ' + a.clientPhone : ''}</div>
+      `;
+      
+      const statusSelect = document.createElement('select');
+      statusSelect.className = 'status-select-compact';
+      statusSelect.style.background = getStatusColor(a.status);
+      statusSelect.style.color = getStatusTextColor(a.status);
+      statusSelect.innerHTML = `
+        <option value="PENDENTE" ${a.status === 'PENDENTE' ? 'selected' : ''}>⏳ Pendente</option>
+        <option value="CONFIRMADO" ${a.status === 'CONFIRMADO' ? 'selected' : ''}>✓ Confirmado</option>
+        <option value="REALIZADO" ${a.status === 'REALIZADO' ? 'selected' : ''}>✓ Realizado</option>
+        <option value="CANCELADO" ${a.status === 'CANCELADO' ? 'selected' : ''}>✗ Cancelado</option>
+      `;
+      statusSelect.onchange = async () => {
+        const newStatus = statusSelect.value;
+        if (newStatus === 'CANCELADO' && a.status !== 'CANCELADO') {
+          const reason = prompt('Informe o motivo do cancelamento (obrigatório):');
+          if (reason && reason.trim()) {
+            a.status = newStatus;
+            a.cancellationReason = reason.trim();
+            try {
+              await saveAppointment(a);
+              await updateDayDetail();
+            } catch (error) {
+              console.error('Erro ao atualizar status:', error);
+              alert('Erro ao atualizar status.');
+            }
+          } else if (reason !== null) {
+            alert('O motivo do cancelamento é obrigatório!');
+            statusSelect.value = a.status;
+          } else {
+            statusSelect.value = a.status;
+          }
+        } else {
+          a.status = newStatus;
+          try {
+            await saveAppointment(a);
+            await updateDayDetail();
+          } catch (error) {
+            console.error('Erro ao atualizar status:', error);
+            alert('Erro ao atualizar status.');
+          }
+        }
+      };
+      
+      booked.appendChild(leftInfo);
+      booked.appendChild(statusSelect);
+      slot.appendChild(booked);
+    }
+    
+    row.appendChild(checkbox);
+    row.appendChild(time);
+    row.appendChild(slot);
+    hourlyList.appendChild(row);
+  }
+}
+
+viewMode.addEventListener('change', () => {
+  if (viewMode.value === 'week') {
+    document.getElementById('calendarArea').classList.add('hidden');
+    weekArea.classList.remove('hidden');
+    if (!selectedDate) {
+      selectedDate = new Date();
+      selectedDate.setHours(0, 0, 0, 0);
+    }
+    renderWeek();
+    updateDayDetail();
+  } else {
+    weekArea.classList.add('hidden');
+    document.getElementById('calendarArea').classList.remove('hidden');
+    renderCalendar();
+  }
+});
+
+btnToday.addEventListener('click', () => {
+  currentMonth = new Date();
+  selectedDate = new Date();
+  selectedDate.setHours(0, 0, 0, 0);
+  
+  if (viewMode.value === 'week') {
+    renderWeek();
+  } else {
+    renderCalendar();
+  }
+  
+  updateDayDetail();
+});
+
+// ====================
+// INICIALIZAÇÃO
+// ====================
+
+async function init() {
+  try {
+    allTypes = await getAllTypes();
+    allAppointments = await getAllAppointments();
+    
+    loadTypesUI();
+    renderCalendar();
+    computeFinance(allAppointments);
+    
+    setupPeriodFilters();
+    setupStatusFilters();
+    loadAppointmentsUI();
+    
+    selectedDate = new Date();
+    selectedDate.setHours(0, 0, 0, 0);
+    await updateDayDetail();
+
+    unsubscribeTypes = onTypesChange(types => {
+      allTypes = types;
+      loadTypesUI();
+    });
+
+    unsubscribeAppointments = onAppointmentsChange(appointments => {
+      allAppointments = appointments;
+      computeFinance(appointments);
+      loadAppointmentsUI();
+      if (viewMode.value === 'week') {
+        renderWeek();
+      } else {
+        renderCalendar();
+      }
+      if (selectedDate) {
+        updateDayDetail();
+      }
+    });
+
+    console.log('✅ Painel administrativo conectado ao Firebase!');
+  } catch (error) {
+    console.error('Erro na inicialização:', error);
+    alert('Erro ao conectar com o servidor. Verifique a configuração do Firebase.');
+  }
+}
+
+window.addEventListener('beforeunload', () => {
+  if (unsubscribeTypes) unsubscribeTypes();
+  if (unsubscribeAppointments) unsubscribeAppointments();
+});
