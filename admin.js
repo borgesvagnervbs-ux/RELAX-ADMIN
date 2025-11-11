@@ -17,10 +17,6 @@ const typesList = document.getElementById('typesList');
 const btnAddType = document.getElementById('btnAddType');
 const btnReloadTypes = document.getElementById('btnReloadTypes');
 const appointmentsList = document.getElementById('appointmentsList');
-const sumDay = document.getElementById('sumDay');
-const sumMonth = document.getElementById('sumMonth');
-const sumYear = document.getElementById('sumYear');
-const paidList = document.getElementById('paidList');
 const calendarClient = document.getElementById('calendarClient');
 const weekContainer = document.getElementById('weekContainer');
 const weekArea = document.getElementById('weekArea');
@@ -31,6 +27,12 @@ const hourlyList = document.getElementById('hourlyList');
 const btnToday = document.getElementById('btnToday');
 const dayDetail = document.getElementById('dayDetail');
 const adminGreeting = document.getElementById('adminGreeting');
+
+// Elementos Financeiros
+const financeTicketMedio = document.getElementById('financeTicketMedio');
+const financeQuantidade = document.getElementById('financeQuantidade');
+const financeTotal = document.getElementById('financeTotal');
+const massageRanking = document.getElementById('massageRanking');
 
 let allTypes = [];
 let allAppointments = [];
@@ -43,8 +45,11 @@ let currentAdminUser = null;
 let editingTypeId = null;
 let currentStatusFilter = 'todos';
 let currentPeriodFilter = 'current-month';
+let currentFinancePeriodFilter = 'current-month';
 let customDateStart = null;
 let customDateEnd = null;
+let customFinanceDateStart = null;
+let customFinanceDateEnd = null;
 
 // ====================
 // FUNÇÕES AUXILIARES
@@ -192,7 +197,10 @@ function openTab(tab) {
   if (tab === 'dashboard') tabDashboard.classList.remove('hidden');
   if (tab === 'types') tabTypes.classList.remove('hidden');
   if (tab === 'appointments') tabAppointments.classList.remove('hidden');
-  if (tab === 'finance') tabFinance.classList.remove('hidden');
+  if (tab === 'finance') {
+    tabFinance.classList.remove('hidden');
+    computeFinanceData();
+  }
 }
 
 // ====================
@@ -375,6 +383,28 @@ function setupPeriodFilters() {
   });
 }
 
+function setupFinancePeriodFilters() {
+  const periodButtons = document.querySelectorAll('.finance-period-btn');
+  
+  periodButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      periodButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFinancePeriodFilter = btn.dataset.period;
+      
+      const customFinancePeriodFilters = document.getElementById('customFinancePeriodFilters');
+      if (currentFinancePeriodFilter === 'custom') {
+        customFinancePeriodFilters.classList.remove('hidden');
+      } else {
+        customFinancePeriodFilters.classList.add('hidden');
+        customFinanceDateStart = null;
+        customFinanceDateEnd = null;
+        computeFinanceData();
+      }
+    });
+  });
+}
+
 function applyCustomPeriod() {
   const startInput = document.getElementById('filterDateStart');
   const endInput = document.getElementById('filterDateEnd');
@@ -395,6 +425,26 @@ function applyCustomPeriod() {
   loadAppointmentsUI();
 }
 
+function applyCustomFinancePeriod() {
+  const startInput = document.getElementById('financeFilterDateStart');
+  const endInput = document.getElementById('financeFilterDateEnd');
+  
+  if (!startInput.value || !endInput.value) {
+    alert('Preencha ambas as datas!');
+    return;
+  }
+  
+  customFinanceDateStart = new Date(startInput.value + 'T00:00:00');
+  customFinanceDateEnd = new Date(endInput.value + 'T23:59:59');
+  
+  if (customFinanceDateStart > customFinanceDateEnd) {
+    alert('A data de início deve ser anterior à data de fim!');
+    return;
+  }
+  
+  computeFinanceData();
+}
+
 function setupStatusFilters() {
   const filterButtons = document.querySelectorAll('.filter-status-btn');
   
@@ -408,39 +458,43 @@ function setupStatusFilters() {
   });
 }
 
+function filterAppointmentsByPeriod(appointments, periodFilter, customStart, customEnd) {
+  let filtered = appointments.slice();
+  
+  if (periodFilter === 'current-week') {
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 7);
+    
+    filtered = filtered.filter(a => a.start >= startOfWeek.getTime() && a.start < endOfWeek.getTime());
+  } else if (periodFilter === 'current-month') {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).getTime();
+    
+    filtered = filtered.filter(a => a.start >= startOfMonth && a.start <= endOfMonth);
+  } else if (periodFilter === 'custom' && customStart && customEnd) {
+    filtered = filtered.filter(a => {
+      return a.start >= customStart.getTime() && a.start <= customEnd.getTime();
+    });
+  }
+  
+  return filtered;
+}
+
 async function loadAppointmentsUI() {
   try {
     appointmentsList.innerHTML = '';
     
     if (allAppointments.length === 0) {
       appointmentsList.innerHTML = '<div class="small">Sem agendamentos</div>';
-      computeFinance([]);
       return;
     }
     
-    let filtered = allAppointments.slice();
-    
-    // Filtro por período
-    if (currentPeriodFilter === 'current-week') {
-      const now = new Date();
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - now.getDay());
-      startOfWeek.setHours(0, 0, 0, 0);
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 7);
-      
-      filtered = filtered.filter(a => a.start >= startOfWeek.getTime() && a.start < endOfWeek.getTime());
-    } else if (currentPeriodFilter === 'current-month') {
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).getTime();
-      
-      filtered = filtered.filter(a => a.start >= startOfMonth && a.start <= endOfMonth);
-    } else if (currentPeriodFilter === 'custom' && customDateStart && customDateEnd) {
-      filtered = filtered.filter(a => {
-        return a.start >= customDateStart.getTime() && a.start <= customDateEnd.getTime();
-      });
-    }
+    let filtered = filterAppointmentsByPeriod(allAppointments, currentPeriodFilter, customDateStart, customDateEnd);
 
     // Filtro por status
     if (currentStatusFilter !== 'todos') {
@@ -457,7 +511,6 @@ async function loadAppointmentsUI() {
     
     if (filtered.length === 0) {
       appointmentsList.innerHTML = '<div class="small" style="text-align:center;padding:32px;color:var(--text-secondary)">Nenhum agendamento encontrado com os filtros selecionados</div>';
-      computeFinance(allAppointments);
       return;
     }
     
@@ -469,13 +522,6 @@ async function loadAppointmentsUI() {
       const left = document.createElement('div');
       left.style.flex = '1';
       
-      const statusDisplay = getStatusDisplay(ap.status);
-      const statusBadge = document.createElement('span');
-      statusBadge.className = getStatusBadgeClass(ap.status);
-      statusBadge.textContent = `${statusDisplay.icon} ${statusDisplay.text}`;
-      statusBadge.style.display = 'inline-block';
-      statusBadge.style.marginBottom = '8px';
-      
       let noteHTML = '';
       if (ap.note) {
         noteHTML = `<div class="small" style="margin-top:6px"><strong>Obs cliente:</strong> ${ap.note}</div>`;
@@ -485,11 +531,10 @@ async function loadAppointmentsUI() {
       }
       
       left.innerHTML = `
-        <div style="font-weight:800;margin-top:8px">${ap.typeName} • ${formatMoney(ap.price)}</div>
-        <div class="small">${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} — ${ap.clientName}${ap.clientPhone?' • '+ap.clientPhone:''}</div>
+        <div style="font-weight:800">${ap.typeName} • ${formatMoney(ap.price)}</div>
+        <div class="small" style="margin-top:4px">${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} — ${ap.clientName}${ap.clientPhone?' • '+ap.clientPhone:''}</div>
         ${noteHTML}
       `;
-      left.insertBefore(statusBadge, left.firstChild);
       
       const right = document.createElement('div');
       right.style.display = 'flex';
@@ -562,8 +607,6 @@ async function loadAppointmentsUI() {
       div.appendChild(right);
       appointmentsList.appendChild(div);
     });
-
-    computeFinance(allAppointments);
   } catch (error) {
     console.error('Erro ao carregar agendamentos:', error);
   }
@@ -573,38 +616,81 @@ async function loadAppointmentsUI() {
 // FINANÇAS
 // ====================
 
-function computeFinance(list) {
-  const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-  const startOfYear = new Date(now.getFullYear(), 0, 1).getTime();
-
-  const paid = list.filter(a => a.paid);
-  const daySum = paid.filter(a => a.start >= startOfDay && a.start < startOfDay + 24 * 3600 * 1000).reduce((s, a) => s + Number(a.price), 0);
-  const monthSum = paid.filter(a => a.start >= startOfMonth).reduce((s, a) => s + Number(a.price), 0);
-  const yearSum = paid.filter(a => a.start >= startOfYear).reduce((s, a) => s + Number(a.price), 0);
-
-  sumDay.textContent = formatMoney(daySum);
-  sumMonth.textContent = formatMoney(monthSum);
-  sumYear.textContent = formatMoney(yearSum);
-
-  paid.sort((a, b) => b.start - a.start);
-  paidList.innerHTML = '';
+function computeFinanceData() {
+  let filtered = filterAppointmentsByPeriod(allAppointments, currentFinancePeriodFilter, customFinanceDateStart, customFinanceDateEnd);
   
-  if (paid.length === 0) {
-    paidList.innerHTML = '<div class="small">Nenhuma sessão paga</div>';
+  // Apenas agendamentos pagos
+  const paid = filtered.filter(a => a.paid === true);
+  
+  const quantidade = paid.length;
+  const total = paid.reduce((sum, a) => sum + Number(a.price), 0);
+  const ticketMedio = quantidade > 0 ? total / quantidade : 0;
+  
+  financeTicketMedio.textContent = formatMoney(ticketMedio);
+  financeQuantidade.textContent = quantidade;
+  financeTotal.textContent = formatMoney(total);
+  
+  // Ranking de massagens
+  const typeCount = {};
+  paid.forEach(a => {
+    if (!typeCount[a.typeName]) {
+      typeCount[a.typeName] = 0;
+    }
+    typeCount[a.typeName]++;
+  });
+  
+  const ranking = Object.entries(typeCount)
+    .map(([name, count]) => ({
+      name,
+      count,
+      percentage: (count / quantidade) * 100
+    }))
+    .sort((a, b) => b.count - a.count);
+  
+  massageRanking.innerHTML = '';
+  
+  if (ranking.length === 0) {
+    massageRanking.innerHTML = '<div class="small" style="text-align:center;padding:24px;color:var(--text-secondary)">Nenhuma massagem paga no período selecionado</div>';
     return;
   }
   
-  paid.forEach(p => {
-    const dd = new Date(p.start);
-    const el = document.createElement('div');
-    el.className = 'card';
-    el.innerHTML = `
-      <div style="font-weight:800">${p.typeName} • ${formatMoney(p.price)}</div>
-      <div class="small">${dd.toLocaleDateString()} ${dd.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} — ${p.clientName}</div>
+  ranking.forEach((item, index) => {
+    const rankItem = document.createElement('div');
+    rankItem.className = 'ranking-item';
+    
+    const position = document.createElement('div');
+    position.className = 'ranking-position';
+    position.textContent = `${index + 1}º`;
+    
+    const info = document.createElement('div');
+    info.className = 'ranking-info';
+    
+    const name = document.createElement('div');
+    name.className = 'ranking-name';
+    name.textContent = item.name;
+    
+    const barContainer = document.createElement('div');
+    barContainer.className = 'ranking-bar-container';
+    
+    const bar = document.createElement('div');
+    bar.className = 'ranking-bar';
+    bar.style.width = `${item.percentage}%`;
+    
+    barContainer.appendChild(bar);
+    info.appendChild(name);
+    info.appendChild(barContainer);
+    
+    const stats = document.createElement('div');
+    stats.className = 'ranking-stats';
+    stats.innerHTML = `
+      <div class="ranking-percentage">${item.percentage.toFixed(1)}%</div>
+      <div class="ranking-count">${item.count} sessõ${item.count > 1 ? 'es' : 'ão'}</div>
     `;
-    paidList.appendChild(el);
+    
+    rankItem.appendChild(position);
+    rankItem.appendChild(info);
+    rankItem.appendChild(stats);
+    massageRanking.appendChild(rankItem);
   });
 }
 
@@ -820,7 +906,6 @@ async function updateDayDetail() {
   const isToday = selectedDate.getTime() === today.getTime();
   const currentHour = new Date().getHours();
   
-  // Desabilitar horários passados automaticamente
   if (isPastDate || isToday) {
     for (let hour = 8; hour <= 22; hour++) {
       if (isPastDate || (isToday && hour < currentHour)) {
@@ -835,7 +920,6 @@ async function updateDayDetail() {
     }
   }
   
-  // Toggle All Row
   const toggleAllRow = document.createElement('div');
   toggleAllRow.style.marginBottom = '16px';
   toggleAllRow.style.display = 'flex';
@@ -888,7 +972,6 @@ async function updateDayDetail() {
   toggleAllRow.appendChild(toggleAllLabel);
   hourlyList.appendChild(toggleAllRow);
   
-  // Renderizar cada horário
   for (let hour = 8; hour <= 22; hour++) {
     const row = document.createElement('div');
     row.className = 'hour-row';
@@ -1050,11 +1133,12 @@ async function init() {
     
     loadTypesUI();
     renderCalendar();
-    computeFinance(allAppointments);
     
     setupPeriodFilters();
+    setupFinancePeriodFilters();
     setupStatusFilters();
     loadAppointmentsUI();
+    computeFinanceData();
     
     selectedDate = new Date();
     selectedDate.setHours(0, 0, 0, 0);
@@ -1067,8 +1151,8 @@ async function init() {
 
     unsubscribeAppointments = onAppointmentsChange(appointments => {
       allAppointments = appointments;
-      computeFinance(appointments);
       loadAppointmentsUI();
+      computeFinanceData();
       if (viewMode.value === 'week') {
         renderWeek();
       } else {
