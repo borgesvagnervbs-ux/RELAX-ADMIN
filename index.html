@@ -141,7 +141,7 @@
             </button>
           </div>
 
-          <!-- Filtros de Data Personalizados (inicialmente oculto) -->
+          <!-- Filtros de Data Personalizados -->
           <div id="customPeriodFilters" class="hidden" style="margin-top:12px">
             <div class="row">
               <div class="col">
@@ -156,7 +156,7 @@
             <button class="btn btn-primary btn-sm" onclick="applyCustomPeriod()" style="margin-top:8px">Aplicar Filtro</button>
           </div>
 
-          <!-- Filtros de Status Modernos -->
+          <!-- Filtros de Status -->
           <div class="filter-status-container">
             <button class="filter-status-btn active" data-filter="todos">
               <span class="filter-icon">📋</span>
@@ -193,24 +193,63 @@
 
         <section class="card hidden" id="tab-finance">
           <h3>Controle Financeiro</h3>
-          <div class="small">Valores contabilizados quando marcado como PAGO</div>
-          <div class="finance-row" style="margin-top:10px">
-            <div class="finance-box">
-              <div class="small">Hoje</div>
-              <div id="sumDay" style="font-weight:800;margin-top:6px">R$ 0,00</div>
+          <div class="small">Análise de sessões pagas no período selecionado</div>
+          
+          <!-- Filtros de Período (Finanças) -->
+          <div class="period-filters" style="margin-top:16px">
+            <button class="finance-period-btn" data-period="current-week">
+              <span class="period-icon">📅</span>
+              <span>Semana Atual</span>
+            </button>
+            <button class="finance-period-btn active" data-period="current-month">
+              <span class="period-icon">📆</span>
+              <span>Mês Atual</span>
+            </button>
+            <button class="finance-period-btn" data-period="custom">
+              <span class="period-icon">🗓️</span>
+              <span>Período Personalizado</span>
+            </button>
+          </div>
+
+          <!-- Filtros de Data Personalizados (Finanças) -->
+          <div id="customFinancePeriodFilters" class="hidden" style="margin-top:12px">
+            <div class="row">
+              <div class="col">
+                <label class="small" style="display:block;margin-bottom:6px;font-weight:600">Data Início:</label>
+                <input type="date" id="financeFilterDateStart" class="input">
+              </div>
+              <div class="col">
+                <label class="small" style="display:block;margin-bottom:6px;font-weight:600">Data Fim:</label>
+                <input type="date" id="financeFilterDateEnd" class="input">
+              </div>
             </div>
-            <div class="finance-box">
-              <div class="small">Mês</div>
-              <div id="sumMonth" style="font-weight:800;margin-top:6px">R$ 0,00</div>
+            <button class="btn btn-primary btn-sm" onclick="applyCustomFinancePeriod()" style="margin-top:8px">Aplicar Filtro</button>
+          </div>
+
+          <!-- Cards Financeiros -->
+          <div class="finance-cards">
+            <div class="finance-card">
+              <div class="finance-card-icon">💵</div>
+              <div class="finance-card-label">Ticket Médio</div>
+              <div class="finance-card-value" id="financeTicketMedio">R$ 0,00</div>
             </div>
-            <div class="finance-box">
-              <div class="small">Ano</div>
-              <div id="sumYear" style="font-weight:800;margin-top:6px">R$ 0,00</div>
+            <div class="finance-card">
+              <div class="finance-card-icon">📊</div>
+              <div class="finance-card-label">Quantidade</div>
+              <div class="finance-card-value" id="financeQuantidade">0</div>
+            </div>
+            <div class="finance-card">
+              <div class="finance-card-icon">💰</div>
+              <div class="finance-card-label">Total Recebido</div>
+              <div class="finance-card-value" id="financeTotal">R$ 0,00</div>
             </div>
           </div>
-          <div style="margin-top:12px">
-            <div class="small">Lista de sessões pagas</div>
-            <div id="paidList" style="margin-top:8px"></div>
+
+          <!-- Ranking de Massagens -->
+          <div style="margin-top:24px">
+            <h4 style="margin-bottom:12px;font-size:1.15rem">🏆 Ranking de Massagens</h4>
+            <div class="small" style="margin-bottom:12px">Tipos mais realizados no período</div>
+            <div id="massageRanking"></div>
           </div>
         </section>
       </main>
