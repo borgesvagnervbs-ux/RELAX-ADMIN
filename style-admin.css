@@ -106,6 +106,7 @@ body {
 #logoAdmin {
   background: rgba(255, 255, 255, 0.95);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: url('icon-512.png') center/contain no-repeat;
 }
 
 .header-title {
@@ -1899,3 +1900,4 @@ select:focus-visible,
 }
 
 /* ===== FIM DO ARQUIVO CSS ===== */
+
