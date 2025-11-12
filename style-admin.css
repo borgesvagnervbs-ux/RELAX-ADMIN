@@ -1147,7 +1147,7 @@ textarea {
 .footer-logo-icon {
   width: 64px;
   height: 64px;
-  background: white;
+  background: url('icon-512.png') center/contain no-repeat;
   border-radius: 14px;
   box-shadow: 0 4px 16px rgba(111, 183, 167, 0.3);
 }
@@ -1900,4 +1900,5 @@ select:focus-visible,
 }
 
 /* ===== FIM DO ARQUIVO CSS ===== */
+
 
