@@ -61,6 +61,7 @@
         <nav class="sb-menu">
           <div class="sb-item active" data-tab="dashboard">Dashboard</div>
           <div class="sb-item" data-tab="types">Tipos de Massagem</div>
+          <div class="sb-item" data-tab="clients">Clientes</div>
           <div class="sb-item" data-tab="appointments">Agendamentos</div>
           <div class="sb-item" data-tab="finance">Controle Financeiro</div>
         </nav>
@@ -120,6 +121,22 @@
             <button class="btn btn-ghost" id="btnReloadTypes">Atualizar</button>
           </div>
           <div id="typesList" style="margin-top:12px"></div>
+        </section>
+
+        <section class="card hidden" id="tab-clients">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+            <div>
+              <h3>Clientes</h3>
+              <div class="small">Visualize e gerencie os clientes cadastrados</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="text" id="clientSearchInput" class="input" placeholder="Buscar cliente..." style="width:200px"/>
+              <button class="btn btn-ghost" onclick="loadClientsUI()">
+                <i class="fas fa-sync-alt"></i>
+              </button>
+            </div>
+          </div>
+          <div id="clientsList" class="clients-grid"></div>
         </section>
 
         <section class="card hidden" id="tab-appointments">
@@ -254,6 +271,22 @@
           </div>
         </section>
       </main>
+    </div>
+
+    <!-- Modal de Detalhes do Cliente -->
+    <div id="clientDetailModal" class="modal-overlay hidden" onclick="closeClientModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h2 class="modal-title" id="clientModalTitle">Detalhes do Cliente</h2>
+          <button class="modal-close" onclick="closeClientModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="clientModalBody">
+          <!-- Conteúdo será inserido dinamicamente -->
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="closeClientModal()">Fechar</button>
+        </div>
+      </div>
     </div>
 
     <!-- RODAPÉ -->
