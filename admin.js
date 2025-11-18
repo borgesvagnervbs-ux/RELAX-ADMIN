@@ -1,4 +1,4 @@
-// admin.js - Painel Administrativo Completo
+// admin.js - Painel Administrativo Completo com Gestão de Clientes
 
 // Elementos da UI
 const loginScreenAdmin = document.getElementById('loginScreenAdmin');
@@ -9,6 +9,7 @@ const mainContent = document.getElementById('mainContent');
 const sbItems = Array.from(document.querySelectorAll('.sb-item'));
 const tabDashboard = document.getElementById('tab-dashboard');
 const tabTypes = document.getElementById('tab-types');
+const tabClients = document.getElementById('tab-clients');
 const tabAppointments = document.getElementById('tab-appointments');
 const tabFinance = document.getElementById('tab-finance');
 const typeName = document.getElementById('typeName');
@@ -17,6 +18,8 @@ const typesList = document.getElementById('typesList');
 const btnAddType = document.getElementById('btnAddType');
 const btnReloadTypes = document.getElementById('btnReloadTypes');
 const appointmentsList = document.getElementById('appointmentsList');
+const clientsList = document.getElementById('clientsList');
+const clientSearchInput = document.getElementById('clientSearchInput');
 const calendarClient = document.getElementById('calendarClient');
 const weekContainer = document.getElementById('weekContainer');
 const weekArea = document.getElementById('weekArea');
@@ -27,6 +30,9 @@ const hourlyList = document.getElementById('hourlyList');
 const btnToday = document.getElementById('btnToday');
 const dayDetail = document.getElementById('dayDetail');
 const adminGreeting = document.getElementById('adminGreeting');
+const clientDetailModal = document.getElementById('clientDetailModal');
+const clientModalTitle = document.getElementById('clientModalTitle');
+const clientModalBody = document.getElementById('clientModalBody');
 
 // Elementos Financeiros
 const financeTicketMedio = document.getElementById('financeTicketMedio');
@@ -36,10 +42,12 @@ const massageRanking = document.getElementById('massageRanking');
 
 let allTypes = [];
 let allAppointments = [];
+let allClients = {};
 let currentMonth = new Date();
 let selectedDate = null;
 let unsubscribeTypes = null;
 let unsubscribeAppointments = null;
+let unsubscribeUsers = null;
 let currentDayAvailability = {};
 let currentAdminUser = null;
 let editingTypeId = null;
@@ -71,6 +79,52 @@ function toDateStr(date) {
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+function calculateAge(birthdate) {
+  if (!birthdate) return 'N/A';
+  const parts = birthdate.split('/');
+  if (parts.length !== 3) return 'N/A';
+  
+  const birthDate = new Date(parts[2], parts[1] - 1, parts[0]);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  
+  return age;
+}
+
+function maskCpf(cpf) {
+  if (!cpf) return '';
+  cpf = cpf.replace(/\D/g, '');
+  cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
+  cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
+  cpf = cpf.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  return cpf;
+}
+
+function maskPhone(phone) {
+  if (!phone) return '';
+  phone = phone.replace(/\D/g, '');
+  if (phone.length <= 10) {
+    phone = phone.replace(/(\d{2})(\d)/, '($1) $2');
+    phone = phone.replace(/(\d{4})(\d)/, '$1-$2');
+  } else {
+    phone = phone.replace(/(\d{2})(\d)/, '($1) $2');
+    phone = phone.replace(/(\d{5})(\d)/, '$1-$2');
+  }
+  return phone;
+}
+
+function maskCep(cep) {
+  if (!cep) return '';
+  cep = cep.replace(/\D/g, '');
+  cep = cep.replace(/(\d{5})(\d)/, '$1-$2');
+  return cep;
 }
 
 // ====================
@@ -142,6 +196,7 @@ onAuthChange(async (user) => {
     
     if (unsubscribeTypes) unsubscribeTypes();
     if (unsubscribeAppointments) unsubscribeAppointments();
+    if (unsubscribeUsers) unsubscribeUsers();
     
     loginScreenAdmin.classList.remove('hidden');
     mainScreenAdmin.classList.add('hidden');
@@ -191,17 +246,260 @@ sbItems.forEach(item => {
 function openTab(tab) {
   tabDashboard.classList.add('hidden');
   tabTypes.classList.add('hidden');
+  tabClients.classList.add('hidden');
   tabAppointments.classList.add('hidden');
   tabFinance.classList.add('hidden');
   
   if (tab === 'dashboard') tabDashboard.classList.remove('hidden');
   if (tab === 'types') tabTypes.classList.remove('hidden');
+  if (tab === 'clients') {
+    tabClients.classList.remove('hidden');
+    loadClientsUI();
+  }
   if (tab === 'appointments') tabAppointments.classList.remove('hidden');
   if (tab === 'finance') {
     tabFinance.classList.remove('hidden');
     computeFinanceData();
   }
 }
+
+// ====================
+// GESTÃO DE CLIENTES
+// ====================
+
+async function loadAllClients() {
+  try {
+    const usersSnapshot = await firebase.firestore().collection('users').get();
+    allClients = {};
+    
+    usersSnapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.name && data.email) {
+        allClients[doc.id] = {
+          userId: doc.id,
+          name: data.name,
+          email: data.email,
+          phone: data.phone || '',
+          cpf: data.cpf || '',
+          birthdate: data.birthdate || '',
+          address: data.address || {},
+          createdAt: data.createdAt || Date.now()
+        };
+      }
+    });
+    
+    console.log('✅ Clientes carregados:', Object.keys(allClients).length);
+  } catch (error) {
+    console.error('Erro ao carregar clientes:', error);
+  }
+}
+
+async function loadClientsUI() {
+  try {
+    clientsList.innerHTML = '<div class="small" style="text-align:center;padding:24px">Carregando clientes...</div>';
+    
+    await loadAllClients();
+    
+    const clientsArray = Object.values(allClients);
+    
+    if (clientsArray.length === 0) {
+      clientsList.innerHTML = '<div class="small" style="text-align:center;padding:48px;color:var(--text-secondary)">Nenhum cliente cadastrado ainda</div>';
+      return;
+    }
+    
+    const searchTerm = clientSearchInput.value.toLowerCase().trim();
+    const filtered = searchTerm 
+      ? clientsArray.filter(c => 
+          c.name.toLowerCase().includes(searchTerm) || 
+          c.email.toLowerCase().includes(searchTerm) ||
+          c.phone.includes(searchTerm)
+        )
+      : clientsArray;
+    
+    filtered.sort((a, b) => a.name.localeCompare(b.name));
+    
+    clientsList.innerHTML = '';
+    
+    if (filtered.length === 0) {
+      clientsList.innerHTML = '<div class="small" style="text-align:center;padding:48px;color:var(--text-secondary)">Nenhum cliente encontrado</div>';
+      return;
+    }
+    
+    filtered.forEach(client => {
+      const card = document.createElement('div');
+      card.className = 'client-card';
+      card.onclick = () => openClientDetail(client.userId);
+      
+      const age = calculateAge(client.birthdate);
+      
+      const appointmentCount = allAppointments.filter(a => a.userId === client.userId).length;
+      
+      card.innerHTML = `
+        <div class="client-card-header">
+          <div class="client-avatar">
+            <i class="fas fa-user"></i>
+          </div>
+          <div class="client-card-info">
+            <div class="client-card-name">${client.name}</div>
+            <div class="client-card-meta">
+              <span><i class="fas fa-phone"></i> ${maskPhone(client.phone) || 'Sem telefone'}</span>
+              <span><i class="fas fa-birthday-cake"></i> ${age} anos</span>
+            </div>
+          </div>
+        </div>
+        <div class="client-card-stats">
+          <div class="client-stat">
+            <span class="client-stat-value">${appointmentCount}</span>
+            <span class="client-stat-label">Agendamento${appointmentCount !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
+      `;
+      
+      clientsList.appendChild(card);
+    });
+  } catch (error) {
+    console.error('Erro ao carregar clientes:', error);
+    clientsList.innerHTML = '<div class="small" style="text-align:center;padding:24px;color:var(--danger)">Erro ao carregar clientes</div>';
+  }
+}
+
+function openClientDetail(userId) {
+  const client = allClients[userId];
+  if (!client) {
+    alert('Cliente não encontrado');
+    return;
+  }
+  
+  const age = calculateAge(client.birthdate);
+  const clientAppointments = allAppointments
+    .filter(a => a.userId === userId)
+    .sort((a, b) => b.start - a.start);
+  
+  const totalPaid = clientAppointments.filter(a => a.paid).length;
+  const totalValue = clientAppointments.filter(a => a.paid).reduce((sum, a) => sum + Number(a.price), 0);
+  
+  clientModalTitle.textContent = client.name;
+  
+  let appointmentsHTML = '';
+  if (clientAppointments.length === 0) {
+    appointmentsHTML = '<div class="small" style="text-align:center;padding:24px;color:var(--text-secondary)">Nenhum agendamento ainda</div>';
+  } else {
+    appointmentsHTML = clientAppointments.map(ap => {
+      const d = new Date(ap.start);
+      const statusDisplay = getStatusDisplay(ap.status);
+      return `
+        <div class="client-appointment-item">
+          <div class="client-appointment-date">
+            <i class="fas fa-calendar"></i>
+            ${d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+            às ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}
+          </div>
+          <div class="client-appointment-type">${ap.typeName}</div>
+          <div class="client-appointment-footer">
+            <span class="${getStatusBadgeClass(ap.status)}">${statusDisplay.icon} ${statusDisplay.text}</span>
+            ${ap.paid ? '<span class="status-badge status-realizado">✓ Pago</span>' : ''}
+            <span class="client-appointment-price">${formatMoney(ap.price)}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  clientModalBody.innerHTML = `
+    <div class="client-detail-section">
+      <h4><i class="fas fa-info-circle"></i> Informações Pessoais</h4>
+      <div class="client-detail-grid">
+        <div class="client-detail-item">
+          <span class="client-detail-label">Email:</span>
+          <span class="client-detail-value">${client.email}</span>
+        </div>
+        <div class="client-detail-item">
+          <span class="client-detail-label">Telefone:</span>
+          <span class="client-detail-value">${maskPhone(client.phone) || 'Não informado'}</span>
+        </div>
+        <div class="client-detail-item">
+          <span class="client-detail-label">CPF:</span>
+          <span class="client-detail-value">${maskCpf(client.cpf) || 'Não informado'}</span>
+        </div>
+        <div class="client-detail-item">
+          <span class="client-detail-label">Data de Nascimento:</span>
+          <span class="client-detail-value">${client.birthdate || 'Não informada'} (${age} anos)</span>
+        </div>
+      </div>
+    </div>
+    
+    ${client.address && (client.address.street || client.address.cep) ? `
+    <div class="client-detail-section">
+      <h4><i class="fas fa-map-marker-alt"></i> Endereço</h4>
+      <div class="client-detail-grid">
+        ${client.address.cep ? `
+        <div class="client-detail-item">
+          <span class="client-detail-label">CEP:</span>
+          <span class="client-detail-value">${maskCep(client.address.cep)}</span>
+        </div>` : ''}
+        ${client.address.street ? `
+        <div class="client-detail-item full-width">
+          <span class="client-detail-label">Endereço:</span>
+          <span class="client-detail-value">
+            ${client.address.street}, ${client.address.number || 'S/N'}
+            ${client.address.complement ? ' - ' + client.address.complement : ''}
+          </span>
+        </div>` : ''}
+        ${client.address.neighborhood ? `
+        <div class="client-detail-item">
+          <span class="client-detail-label">Bairro:</span>
+          <span class="client-detail-value">${client.address.neighborhood}</span>
+        </div>` : ''}
+        ${client.address.city ? `
+        <div class="client-detail-item">
+          <span class="client-detail-label">Cidade/UF:</span>
+          <span class="client-detail-value">${client.address.city}${client.address.state ? '/' + client.address.state : ''}</span>
+        </div>` : ''}
+      </div>
+    </div>` : ''}
+    
+    <div class="client-detail-section">
+      <h4><i class="fas fa-chart-line"></i> Estatísticas</h4>
+      <div class="client-stats-grid">
+        <div class="client-stat-card">
+          <div class="client-stat-icon">📅</div>
+          <div class="client-stat-value">${clientAppointments.length}</div>
+          <div class="client-stat-label">Total de Agendamentos</div>
+        </div>
+        <div class="client-stat-card">
+          <div class="client-stat-icon">✓</div>
+          <div class="client-stat-value">${totalPaid}</div>
+          <div class="client-stat-label">Sessões Realizadas</div>
+        </div>
+        <div class="client-stat-card">
+          <div class="client-stat-icon">💰</div>
+          <div class="client-stat-value">${formatMoney(totalValue)}</div>
+          <div class="client-stat-label">Total Gasto</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="client-detail-section">
+      <h4><i class="fas fa-calendar-check"></i> Histórico de Agendamentos</h4>
+      <div class="client-appointments-list">
+        ${appointmentsHTML}
+      </div>
+    </div>
+  `;
+  
+  clientDetailModal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeClientModal(event) {
+  if (event && event.target !== clientDetailModal) return;
+  clientDetailModal.classList.add('hidden');
+  document.body.style.overflow = 'auto';
+}
+
+clientSearchInput.addEventListener('input', () => {
+  loadClientsUI();
+});
 
 // ====================
 // TIPOS DE MASSAGEM
@@ -522,6 +820,9 @@ async function loadAppointmentsUI() {
       const left = document.createElement('div');
       left.style.flex = '1';
       
+      // Nome do cliente clicável
+      const clientNameHTML = `<span class="clickable-client-name" onclick="openClientDetail('${ap.userId}')" title="Ver detalhes do cliente">${ap.clientName}</span>`;
+      
       let noteHTML = '';
       if (ap.note) {
         noteHTML = `<div class="small" style="margin-top:6px"><strong>Obs cliente:</strong> ${ap.note}</div>`;
@@ -532,7 +833,7 @@ async function loadAppointmentsUI() {
       
       left.innerHTML = `
         <div style="font-weight:800">${ap.typeName} • ${formatMoney(ap.price)}</div>
-        <div class="small" style="margin-top:4px">${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} — ${ap.clientName}${ap.clientPhone?' • '+ap.clientPhone:''}</div>
+        <div class="small" style="margin-top:4px">${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} — ${clientNameHTML}${ap.clientPhone?' • '+ap.clientPhone:''}</div>
         ${noteHTML}
       `;
       
@@ -1032,9 +1333,13 @@ async function updateDayDetail() {
       const leftInfo = document.createElement('div');
       leftInfo.style.flex = '1';
       leftInfo.style.minWidth = '0';
+      
+      // Nome do cliente clicável no dashboard também
+      const clientNameHTML = `<span class="clickable-client-name" onclick="openClientDetail('${a.userId}')" title="Ver detalhes do cliente">${a.clientName}</span>`;
+      
       leftInfo.innerHTML = `
         <div style="font-weight:700;margin-bottom:4px">${a.typeName}</div>
-        <div class="small">${a.clientName}${a.clientPhone ? ' • ' + a.clientPhone : ''}</div>
+        <div class="small">${clientNameHTML}${a.clientPhone ? ' • ' + a.clientPhone : ''}</div>
       `;
       
       const statusSelect = document.createElement('select');
@@ -1130,6 +1435,7 @@ async function init() {
   try {
     allTypes = await getAllTypes();
     allAppointments = await getAllAppointments();
+    await loadAllClients();
     
     loadTypesUI();
     renderCalendar();
@@ -1163,6 +1469,36 @@ async function init() {
       }
     });
 
+    // Listener para mudanças nos perfis de usuários
+    unsubscribeUsers = firebase.firestore().collection('users').onSnapshot(snapshot => {
+      snapshot.docChanges().forEach(change => {
+        const userId = change.doc.id;
+        const data = change.doc.data();
+        
+        if (change.type === 'added' || change.type === 'modified') {
+          if (data.name && data.email) {
+            allClients[userId] = {
+              userId,
+              name: data.name,
+              email: data.email,
+              phone: data.phone || '',
+              cpf: data.cpf || '',
+              birthdate: data.birthdate || '',
+              address: data.address || {},
+              createdAt: data.createdAt || Date.now()
+            };
+          }
+        } else if (change.type === 'removed') {
+          delete allClients[userId];
+        }
+      });
+      
+      // Se estamos na aba de clientes, atualizar a UI
+      if (!tabClients.classList.contains('hidden')) {
+        loadClientsUI();
+      }
+    });
+
     console.log('✅ Painel administrativo conectado ao Firebase!');
   } catch (error) {
     console.error('Erro na inicialização:', error);
@@ -1173,4 +1509,5 @@ async function init() {
 window.addEventListener('beforeunload', () => {
   if (unsubscribeTypes) unsubscribeTypes();
   if (unsubscribeAppointments) unsubscribeAppointments();
+  if (unsubscribeUsers) unsubscribeUsers();
 });
