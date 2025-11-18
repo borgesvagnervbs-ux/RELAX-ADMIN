@@ -1901,4 +1901,314 @@ select:focus-visible,
 
 /* ===== FIM DO ARQUIVO CSS ===== */
 
+/* Continuação do arquivo style-admin.css - adicione ao final */
+
+/* ===== CLIENTES - CARDS E GRID ===== */
+.clients-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.client-card {
+  background: linear-gradient(135deg, #ffffff 0%, #fbfffe 100%);
+  border-radius: 16px;
+  padding: 20px;
+  border: 2px solid #e6f1ee;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(15, 43, 42, 0.04);
+}
+
+.client-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(15, 43, 42, 0.15);
+  border-color: var(--accent);
+}
+
+.client-card-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.client-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(111, 183, 167, 0.3);
+}
+
+.client-avatar i {
+  font-size: 1.75rem;
+  color: white;
+}
+
+.client-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.client-card-name {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.client-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.client-card-meta span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.client-card-meta i {
+  font-size: 0.9rem;
+  color: var(--primary);
+}
+
+.client-card-stats {
+  display: flex;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 2px solid #e6f1ee;
+}
+
+.client-stat {
+  flex: 1;
+  text-align: center;
+  padding: 12px;
+  background: linear-gradient(135deg, #e6fff2, #f0fff8);
+  border-radius: 12px;
+}
+
+.client-stat-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 4px;
+}
+
+.client-stat-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ===== MODAL DE CLIENTE ===== */
+.client-detail-section {
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 2px solid #e6f1ee;
+}
+
+.client-detail-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.client-detail-section h4 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.client-detail-section h4 i {
+  color: var(--primary);
+  font-size: 1.2rem;
+}
+
+.client-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.client-detail-item {
+  background: linear-gradient(135deg, #e6fff2, #f0fff8);
+  padding: 14px;
+  border-radius: 12px;
+  border: 2px solid #e6f1ee;
+}
+
+.client-detail-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.client-detail-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.client-detail-value {
+  display: block;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.client-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+}
+
+.client-stat-card {
+  background: linear-gradient(135deg, #ffffff 0%, #fbfffe 100%);
+  border-radius: 14px;
+  padding: 20px;
+  text-align: center;
+  border: 2px solid #e6f1ee;
+  transition: all 0.3s ease;
+}
+
+.client-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(15, 43, 42, 0.1);
+  border-color: var(--accent);
+}
+
+.client-stat-icon {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+}
+
+.client-appointments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.client-appointment-item {
+  background: linear-gradient(135deg, #ffffff 0%, #fbfffe 100%);
+  border-radius: 12px;
+  padding: 16px;
+  border: 2px solid #e6f1ee;
+  transition: all 0.2s ease;
+}
+
+.client-appointment-item:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(15, 43, 42, 0.08);
+}
+
+.client-appointment-date {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.client-appointment-date i {
+  color: var(--primary);
+}
+
+.client-appointment-type {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+.client-appointment-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.client-appointment-price {
+  font-size: 1.1rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-left: auto;
+}
+
+/* ===== NOME CLICÁVEL DO CLIENTE ===== */
+.clickable-client-name {
+  cursor: pointer;
+  color: var(--primary);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+  transition: all 0.2s ease;
+}
+
+.clickable-client-name:hover {
+  color: var(--primary-dark);
+  text-decoration-style: solid;
+}
+
+/* ===== RESPONSIVE - CLIENTES ===== */
+@media (max-width: 768px) {
+  .clients-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .client-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .client-detail-item.full-width {
+    grid-column: 1;
+  }
+  
+  .client-stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .client-appointments-list {
+    max-height: 300px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .clients-grid {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  }
+}
 
