@@ -27,7 +27,7 @@ const usersCollection = db.collection('users');
 // ====================
 
 // Registrar usuário com email e senha
-async function registerUser(email, password, name, phone) {
+async function registerUser(email, password, name, phone, additionalData = {}) {
   try {
     const userCredential = await auth.createUserWithEmailAndPassword(email, password);
     const user = userCredential.user;
@@ -41,6 +41,7 @@ async function registerUser(email, password, name, phone) {
       email: user.email,
       name: name,
       phone: phone,
+      ...additionalData,
       createdAt: Date.now()
     });
     
@@ -144,6 +145,29 @@ async function updateUserProfile(uid, data) {
   } catch (error) {
     console.error('Erro ao atualizar perfil:', error);
     throw error;
+  }
+}
+
+// Verificar se o perfil está completo
+async function isProfileComplete(uid) {
+  try {
+    const profile = await getUserProfile(uid);
+    if (!profile) return false;
+    
+    // Verificar campos obrigatórios
+    const hasBasicInfo = profile.name && profile.phone && profile.cpf && profile.birthdate;
+    const hasAddress = profile.address && 
+                      profile.address.cep && 
+                      profile.address.street && 
+                      profile.address.number && 
+                      profile.address.neighborhood && 
+                      profile.address.city && 
+                      profile.address.state;
+    
+    return hasBasicInfo && hasAddress;
+  } catch (error) {
+    console.error('Erro ao verificar perfil:', error);
+    return false;
   }
 }
 
@@ -392,7 +416,7 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
     
-    // Agendamentos
+    // Agendamentos - admin pode ler todos, usuários apenas os seus
     match /appointments/{appointmentId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
@@ -406,9 +430,10 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
     
-    // Perfis de usuários
+    // Perfis de usuários - usuário pode ler e escrever apenas seu próprio perfil
+    // Admin pode ler todos os perfis (para visualizar dados dos clientes)
     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
   }
