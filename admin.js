@@ -1,4 +1,4 @@
-// admin.js - Painel Administrativo Completo com Gestão de Clientes
+// admin.js - Painel Administrativo Completo
 
 // Elementos da UI
 const loginScreenAdmin = document.getElementById('loginScreenAdmin');
@@ -9,7 +9,6 @@ const mainContent = document.getElementById('mainContent');
 const sbItems = Array.from(document.querySelectorAll('.sb-item'));
 const tabDashboard = document.getElementById('tab-dashboard');
 const tabTypes = document.getElementById('tab-types');
-const tabClients = document.getElementById('tab-clients');
 const tabAppointments = document.getElementById('tab-appointments');
 const tabFinance = document.getElementById('tab-finance');
 const typeName = document.getElementById('typeName');
@@ -18,8 +17,6 @@ const typesList = document.getElementById('typesList');
 const btnAddType = document.getElementById('btnAddType');
 const btnReloadTypes = document.getElementById('btnReloadTypes');
 const appointmentsList = document.getElementById('appointmentsList');
-const clientsList = document.getElementById('clientsList');
-const clientSearchInput = document.getElementById('clientSearchInput');
 const calendarClient = document.getElementById('calendarClient');
 const weekContainer = document.getElementById('weekContainer');
 const weekArea = document.getElementById('weekArea');
@@ -30,9 +27,6 @@ const hourlyList = document.getElementById('hourlyList');
 const btnToday = document.getElementById('btnToday');
 const dayDetail = document.getElementById('dayDetail');
 const adminGreeting = document.getElementById('adminGreeting');
-const clientDetailModal = document.getElementById('clientDetailModal');
-const clientModalTitle = document.getElementById('clientModalTitle');
-const clientModalBody = document.getElementById('clientModalBody');
 
 // Elementos Financeiros
 const financeTicketMedio = document.getElementById('financeTicketMedio');
@@ -40,14 +34,24 @@ const financeQuantidade = document.getElementById('financeQuantidade');
 const financeTotal = document.getElementById('financeTotal');
 const massageRanking = document.getElementById('massageRanking');
 
+// Novo: elemento do ranking de clientes e modal
+const clientRanking = document.getElementById('clientRanking');
+const clientModal = document.getElementById('clientModal');
+const clientModalName = document.getElementById('clientModalName');
+const clientModalPhone = document.getElementById('clientModalPhone');
+const clientModalEmail = document.getElementById('clientModalEmail');
+const clientModalTotal = document.getElementById('clientModalTotal');
+const clientModalCount = document.getElementById('clientModalCount');
+const clientModalAvg = document.getElementById('clientModalAvg');
+const clientModalTopTypes = document.getElementById('clientModalTopTypes');
+const clientModalAppointments = document.getElementById('clientModalAppointments');
+
 let allTypes = [];
 let allAppointments = [];
-let allClients = {};
 let currentMonth = new Date();
 let selectedDate = null;
 let unsubscribeTypes = null;
 let unsubscribeAppointments = null;
-let unsubscribeUsers = null;
 let currentDayAvailability = {};
 let currentAdminUser = null;
 let editingTypeId = null;
@@ -79,52 +83,6 @@ function toDateStr(date) {
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
-}
-
-function calculateAge(birthdate) {
-  if (!birthdate) return 'N/A';
-  const parts = birthdate.split('/');
-  if (parts.length !== 3) return 'N/A';
-  
-  const birthDate = new Date(parts[2], parts[1] - 1, parts[0]);
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-  
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
-  }
-  
-  return age;
-}
-
-function maskCpf(cpf) {
-  if (!cpf) return '';
-  cpf = cpf.replace(/\D/g, '');
-  cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
-  cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
-  cpf = cpf.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-  return cpf;
-}
-
-function maskPhone(phone) {
-  if (!phone) return '';
-  phone = phone.replace(/\D/g, '');
-  if (phone.length <= 10) {
-    phone = phone.replace(/(\d{2})(\d)/, '($1) $2');
-    phone = phone.replace(/(\d{4})(\d)/, '$1-$2');
-  } else {
-    phone = phone.replace(/(\d{2})(\d)/, '($1) $2');
-    phone = phone.replace(/(\d{5})(\d)/, '$1-$2');
-  }
-  return phone;
-}
-
-function maskCep(cep) {
-  if (!cep) return '';
-  cep = cep.replace(/\D/g, '');
-  cep = cep.replace(/(\d{5})(\d)/, '$1-$2');
-  return cep;
 }
 
 // ====================
@@ -196,7 +154,6 @@ onAuthChange(async (user) => {
     
     if (unsubscribeTypes) unsubscribeTypes();
     if (unsubscribeAppointments) unsubscribeAppointments();
-    if (unsubscribeUsers) unsubscribeUsers();
     
     loginScreenAdmin.classList.remove('hidden');
     mainScreenAdmin.classList.add('hidden');
@@ -246,223 +203,17 @@ sbItems.forEach(item => {
 function openTab(tab) {
   tabDashboard.classList.add('hidden');
   tabTypes.classList.add('hidden');
-  tabClients.classList.add('hidden');
   tabAppointments.classList.add('hidden');
   tabFinance.classList.add('hidden');
   
   if (tab === 'dashboard') tabDashboard.classList.remove('hidden');
   if (tab === 'types') tabTypes.classList.remove('hidden');
-  if (tab === 'clients') {
-    tabClients.classList.remove('hidden');
-    loadClientsUI();
-  }
   if (tab === 'appointments') tabAppointments.classList.remove('hidden');
   if (tab === 'finance') {
     tabFinance.classList.remove('hidden');
     computeFinanceData();
   }
 }
-
-// ====================
-// GESTÃO DE CLIENTES
-// ====================
-
-function loadClientsUI() {
-  const clientsArray = Object.values(allClients);
-  
-  if (clientsArray.length === 0) {
-    clientsList.innerHTML = '<div class="small" style="text-align:center;padding:48px;color:var(--text-secondary)">Nenhum cliente cadastrado ainda</div>';
-    return;
-  }
-  
-  const searchTerm = clientSearchInput.value.toLowerCase().trim();
-  const filtered = searchTerm 
-    ? clientsArray.filter(c => 
-        c.name.toLowerCase().includes(searchTerm) || 
-        c.email.toLowerCase().includes(searchTerm) ||
-        (c.phone && c.phone.includes(searchTerm))
-      )
-    : clientsArray;
-  
-  filtered.sort((a, b) => a.name.localeCompare(b.name));
-  
-  clientsList.innerHTML = '';
-  
-  if (filtered.length === 0) {
-    clientsList.innerHTML = '<div class="small" style="text-align:center;padding:48px;color:var(--text-secondary)">Nenhum cliente encontrado</div>';
-    return;
-  }
-  
-  filtered.forEach(client => {
-    const card = document.createElement('div');
-    card.className = 'client-card';
-    card.onclick = () => openClientDetail(client.userId);
-    
-    const age = calculateAge(client.birthdate);
-    const appointmentCount = allAppointments.filter(a => a.userId === client.userId).length;
-    
-    card.innerHTML = `
-      <div class="client-card-header">
-        <div class="client-avatar">
-          <i class="fas fa-user"></i>
-        </div>
-        <div class="client-card-info">
-          <div class="client-card-name">${client.name}</div>
-          <div class="client-card-meta">
-            <span><i class="fas fa-phone"></i> ${maskPhone(client.phone) || 'Sem telefone'}</span>
-            <span><i class="fas fa-birthday-cake"></i> ${age !== 'N/A' ? age + ' anos' : 'Idade não informada'}</span>
-          </div>
-        </div>
-      </div>
-      <div class="client-card-stats">
-        <div class="client-stat">
-          <span class="client-stat-value">${appointmentCount}</span>
-          <span class="client-stat-label">Agendamento${appointmentCount !== 1 ? 's' : ''}</span>
-        </div>
-      </div>
-    `;
-    
-    clientsList.appendChild(card);
-  });
-}
-
-function openClientDetail(userId) {
-  const client = allClients[userId];
-  if (!client) {
-    alert('Cliente não encontrado');
-    return;
-  }
-  
-  const age = calculateAge(client.birthdate);
-  const clientAppointments = allAppointments
-    .filter(a => a.userId === userId)
-    .sort((a, b) => b.start - a.start);
-  
-  const totalPaid = clientAppointments.filter(a => a.paid).length;
-  const totalValue = clientAppointments.filter(a => a.paid).reduce((sum, a) => sum + Number(a.price), 0);
-  
-  clientModalTitle.textContent = client.name;
-  
-  let appointmentsHTML = '';
-  if (clientAppointments.length === 0) {
-    appointmentsHTML = '<div class="small" style="text-align:center;padding:24px;color:var(--text-secondary)">Nenhum agendamento ainda</div>';
-  } else {
-    appointmentsHTML = clientAppointments.map(ap => {
-      const d = new Date(ap.start);
-      const statusDisplay = getStatusDisplay(ap.status);
-      return `
-        <div class="client-appointment-item">
-          <div class="client-appointment-date">
-            <i class="fas fa-calendar"></i>
-            ${d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
-            às ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}
-          </div>
-          <div class="client-appointment-type">${ap.typeName}</div>
-          <div class="client-appointment-footer">
-            <span class="${getStatusBadgeClass(ap.status)}">${statusDisplay.icon} ${statusDisplay.text}</span>
-            ${ap.paid ? '<span class="status-badge status-realizado">✓ Pago</span>' : ''}
-            <span class="client-appointment-price">${formatMoney(ap.price)}</span>
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-  
-  clientModalBody.innerHTML = `
-    <div class="client-detail-section">
-      <h4><i class="fas fa-info-circle"></i> Informações Pessoais</h4>
-      <div class="client-detail-grid">
-        <div class="client-detail-item">
-          <span class="client-detail-label">Email:</span>
-          <span class="client-detail-value">${client.email}</span>
-        </div>
-        <div class="client-detail-item">
-          <span class="client-detail-label">Telefone:</span>
-          <span class="client-detail-value">${maskPhone(client.phone) || 'Não informado'}</span>
-        </div>
-        <div class="client-detail-item">
-          <span class="client-detail-label">CPF:</span>
-          <span class="client-detail-value">${maskCpf(client.cpf) || 'Não informado'}</span>
-        </div>
-        <div class="client-detail-item">
-          <span class="client-detail-label">Data de Nascimento:</span>
-          <span class="client-detail-value">${client.birthdate || 'Não informada'} ${age !== 'N/A' ? '(' + age + ' anos)' : ''}</span>
-        </div>
-      </div>
-    </div>
-    
-    ${client.address && (client.address.street || client.address.cep) ? `
-    <div class="client-detail-section">
-      <h4><i class="fas fa-map-marker-alt"></i> Endereço</h4>
-      <div class="client-detail-grid">
-        ${client.address.cep ? `
-        <div class="client-detail-item">
-          <span class="client-detail-label">CEP:</span>
-          <span class="client-detail-value">${maskCep(client.address.cep)}</span>
-        </div>` : ''}
-        ${client.address.street ? `
-        <div class="client-detail-item full-width">
-          <span class="client-detail-label">Endereço:</span>
-          <span class="client-detail-value">
-            ${client.address.street}, ${client.address.number || 'S/N'}
-            ${client.address.complement ? ' - ' + client.address.complement : ''}
-          </span>
-        </div>` : ''}
-        ${client.address.neighborhood ? `
-        <div class="client-detail-item">
-          <span class="client-detail-label">Bairro:</span>
-          <span class="client-detail-value">${client.address.neighborhood}</span>
-        </div>` : ''}
-        ${client.address.city ? `
-        <div class="client-detail-item">
-          <span class="client-detail-label">Cidade/UF:</span>
-          <span class="client-detail-value">${client.address.city}${client.address.state ? '/' + client.address.state : ''}</span>
-        </div>` : ''}
-      </div>
-    </div>` : ''}
-    
-    <div class="client-detail-section">
-      <h4><i class="fas fa-chart-line"></i> Estatísticas</h4>
-      <div class="client-stats-grid">
-        <div class="client-stat-card">
-          <div class="client-stat-icon">📅</div>
-          <div class="client-stat-value">${clientAppointments.length}</div>
-          <div class="client-stat-label">Total de Agendamentos</div>
-        </div>
-        <div class="client-stat-card">
-          <div class="client-stat-icon">✓</div>
-          <div class="client-stat-value">${totalPaid}</div>
-          <div class="client-stat-label">Sessões Realizadas</div>
-        </div>
-        <div class="client-stat-card">
-          <div class="client-stat-icon">💰</div>
-          <div class="client-stat-value">${formatMoney(totalValue)}</div>
-          <div class="client-stat-label">Total Gasto</div>
-        </div>
-      </div>
-    </div>
-    
-    <div class="client-detail-section">
-      <h4><i class="fas fa-calendar-check"></i> Histórico de Agendamentos</h4>
-      <div class="client-appointments-list">
-        ${appointmentsHTML}
-      </div>
-    </div>
-  `;
-  
-  clientDetailModal.classList.remove('hidden');
-  document.body.style.overflow = 'hidden';
-}
-
-function closeClientModal(event) {
-  if (event && event.target !== clientDetailModal) return;
-  clientDetailModal.classList.add('hidden');
-  document.body.style.overflow = 'auto';
-}
-
-clientSearchInput.addEventListener('input', () => {
-  loadClientsUI();
-});
 
 // ====================
 // TIPOS DE MASSAGEM
@@ -757,6 +508,7 @@ async function loadAppointmentsUI() {
     
     let filtered = filterAppointmentsByPeriod(allAppointments, currentPeriodFilter, customDateStart, customDateEnd);
 
+    // Filtro por status
     if (currentStatusFilter !== 'todos') {
       if (currentStatusFilter === 'pago') {
         filtered = filtered.filter(a => a.paid === true);
@@ -782,13 +534,6 @@ async function loadAppointmentsUI() {
       const left = document.createElement('div');
       left.style.flex = '1';
       
-      // Buscar dados do cliente
-      const client = allClients[ap.userId];
-      const clientAge = client ? calculateAge(client.birthdate) : '';
-      const ageDisplay = clientAge && clientAge !== 'N/A' ? ` (${clientAge} anos)` : '';
-      
-      const clientNameHTML = `<span class="clickable-client-name" onclick="openClientDetail('${ap.userId}')" title="Ver detalhes do cliente">${ap.clientName}${ageDisplay}</span>`;
-      
       let noteHTML = '';
       if (ap.note) {
         noteHTML = `<div class="small" style="margin-top:6px"><strong>Obs cliente:</strong> ${ap.note}</div>`;
@@ -799,7 +544,7 @@ async function loadAppointmentsUI() {
       
       left.innerHTML = `
         <div style="font-weight:800">${ap.typeName} • ${formatMoney(ap.price)}</div>
-        <div class="small" style="margin-top:4px">${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} — ${clientNameHTML}${ap.clientPhone?' • '+ap.clientPhone:''}</div>
+        <div class="small" style="margin-top:4px">${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} — ${ap.clientName}${ap.clientPhone?' • '+ap.clientPhone:''}</div>
         ${noteHTML}
       `;
       
@@ -886,6 +631,7 @@ async function loadAppointmentsUI() {
 function computeFinanceData() {
   let filtered = filterAppointmentsByPeriod(allAppointments, currentFinancePeriodFilter, customFinanceDateStart, customFinanceDateEnd);
   
+  // Apenas agendamentos pagos
   const paid = filtered.filter(a => a.paid === true);
   
   const quantidade = paid.length;
@@ -896,6 +642,7 @@ function computeFinanceData() {
   financeQuantidade.textContent = quantidade;
   financeTotal.textContent = formatMoney(total);
   
+  // Ranking de massagens (mantido)
   const typeCount = {};
   paid.forEach(a => {
     if (!typeCount[a.typeName]) {
@@ -908,7 +655,7 @@ function computeFinanceData() {
     .map(([name, count]) => ({
       name,
       count,
-      percentage: (count / quantidade) * 100
+      percentage: (count / (quantidade || 1)) * 100
     }))
     .sort((a, b) => b.count - a.count);
   
@@ -916,48 +663,217 @@ function computeFinanceData() {
   
   if (ranking.length === 0) {
     massageRanking.innerHTML = '<div class="small" style="text-align:center;padding:24px;color:var(--text-secondary)">Nenhuma massagem paga no período selecionado</div>';
+  } else {
+    ranking.forEach((item, index) => {
+      const rankItem = document.createElement('div');
+      rankItem.className = 'ranking-item';
+      
+      const position = document.createElement('div');
+      position.className = 'ranking-position';
+      position.textContent = `${index + 1}º`;
+      
+      const info = document.createElement('div');
+      info.className = 'ranking-info';
+      
+      const name = document.createElement('div');
+      name.className = 'ranking-name';
+      name.textContent = item.name;
+      
+      const barContainer = document.createElement('div');
+      barContainer.className = 'ranking-bar-container';
+      
+      const bar = document.createElement('div');
+      bar.className = 'ranking-bar';
+      bar.style.width = `${item.percentage}%`;
+      
+      barContainer.appendChild(bar);
+      info.appendChild(name);
+      info.appendChild(barContainer);
+      
+      const stats = document.createElement('div');
+      stats.className = 'ranking-stats';
+      stats.innerHTML = `
+        <div class="ranking-percentage">${item.percentage.toFixed(1)}%</div>
+        <div class="ranking-count">${item.count} sessõ${item.count > 1 ? 'es' : 'ão'}</div>
+      `;
+      
+      rankItem.appendChild(position);
+      rankItem.appendChild(info);
+      rankItem.appendChild(stats);
+      massageRanking.appendChild(rankItem);
+    });
+  }
+
+  // NOVO: construir ranking de clientes (top 5 por ticket médio)
+  buildClientRanking(paid);
+}
+
+/**
+ * Build client ranking from array of paid appointments
+ * - paidAppointments: array of appointments already filtered by period and paid === true
+ */
+function buildClientRanking(paidAppointments) {
+  // Agrupa por cliente (chave: nome + phone para reduzir colisões)
+  const clients = {};
+  paidAppointments.forEach(a => {
+    const key = (a.clientName || 'Cliente sem nome') + '||' + (a.clientPhone || '');
+    if (!clients[key]) clients[key] = { name: a.clientName || '—', phone: a.clientPhone || '', email: a.clientEmail || '', total: 0, count: 0, types: {} , appointments: [] };
+    clients[key].total += Number(a.price || 0);
+    clients[key].count += 1;
+    clients[key].appointments.push(a);
+    // tipos
+    const tn = a.typeName || '—';
+    if (!clients[key].types[tn]) clients[key].types[tn] = 0;
+    clients[key].types[tn]++;
+  });
+
+  const arr = Object.entries(clients).map(([key, val]) => {
+    const ticketAvg = val.count > 0 ? val.total / val.count : 0;
+    return {
+      key,
+      name: val.name,
+      phone: val.phone,
+      email: val.email,
+      total: val.total,
+      count: val.count,
+      ticketAvg,
+      types: val.types,
+      appointments: val.appointments
+    };
+  });
+
+  // Ordena por ticket médio desc e pega top 5
+  arr.sort((a, b) => b.ticketAvg - a.ticketAvg);
+  const top5 = arr.slice(0, 5);
+
+  // Renderiza UI
+  clientRanking.innerHTML = '';
+  if (top5.length === 0) {
+    clientRanking.innerHTML = '<div class="small" style="text-align:center;padding:20px;color:var(--text-secondary)">Nenhum cliente com sessões pagas no período selecionado</div>';
     return;
   }
-  
-  ranking.forEach((item, index) => {
-    const rankItem = document.createElement('div');
-    rankItem.className = 'ranking-item';
-    
+
+  top5.forEach((c, idx) => {
+    const item = document.createElement('div');
+    item.className = 'ranking-item';
+    item.style.cursor = 'pointer';
+    item.onclick = () => openClientModal(c); // Abre modal com dados do cliente
+
     const position = document.createElement('div');
     position.className = 'ranking-position';
-    position.textContent = `${index + 1}º`;
-    
+    position.textContent = `${idx + 1}º`;
+
     const info = document.createElement('div');
     info.className = 'ranking-info';
-    
+
     const name = document.createElement('div');
     name.className = 'ranking-name';
-    name.textContent = item.name;
-    
+    // mostra nome clicável (com telefone ao lado, se houver)
+    name.innerHTML = `<span style="text-decoration:underline">${c.name}</span>` + (c.phone ? ` <span class="small" style="margin-left:8px;color:var(--text-secondary)">${c.phone}</span>` : '');
+
     const barContainer = document.createElement('div');
     barContainer.className = 'ranking-bar-container';
-    
     const bar = document.createElement('div');
     bar.className = 'ranking-bar';
-    bar.style.width = `${item.percentage}%`;
-    
+    // barra proporcional ao ticket médio relativo ao maior ticket do conjunto (para visual)
+    const maxTicket = arr.length ? Math.max(...arr.map(x => x.ticketAvg)) : c.ticketAvg;
+    const widthPercent = maxTicket > 0 ? (c.ticketAvg / maxTicket) * 100 : 0;
+    bar.style.width = `${widthPercent}%`;
+
     barContainer.appendChild(bar);
     info.appendChild(name);
     info.appendChild(barContainer);
-    
+
     const stats = document.createElement('div');
     stats.className = 'ranking-stats';
     stats.innerHTML = `
-      <div class="ranking-percentage">${item.percentage.toFixed(1)}%</div>
-      <div class="ranking-count">${item.count} sessõ${item.count > 1 ? 'es' : 'ão'}</div>
+      <div class="ranking-percentage">${formatMoney(c.ticketAvg)}</div>
+      <div class="ranking-count">${c.count} sessões</div>
     `;
-    
-    rankItem.appendChild(position);
-    rankItem.appendChild(info);
-    rankItem.appendChild(stats);
-    massageRanking.appendChild(rankItem);
+
+    item.appendChild(position);
+    item.appendChild(info);
+    item.appendChild(stats);
+
+    clientRanking.appendChild(item);
   });
 }
+
+/**
+ * Abre o modal do cliente com informações agregadas
+ * - clientObj: objeto gerado em buildClientRanking
+ */
+function openClientModal(clientObj) {
+  // populates modal fields
+  clientModalName.textContent = clientObj.name || '—';
+  clientModalPhone.textContent = clientObj.phone || '—';
+  clientModalEmail.textContent = clientObj.email || '—';
+  clientModalTotal.textContent = formatMoney(clientObj.total || 0); // exibe valor completo, formatMoney retorna "R$ X,XX"
+  clientModalCount.textContent = clientObj.count || 0;
+  clientModalAvg.textContent = formatMoney(clientObj.ticketAvg || 0);
+
+  // Top 3 tipos do cliente
+  const typesArr = Object.entries(clientObj.types || {}).map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
+
+  clientModalTopTypes.innerHTML = '';
+  if (typesArr.length === 0) {
+    clientModalTopTypes.innerHTML = '<div class="small">Sem tipos registrados</div>';
+  } else {
+    typesArr.forEach((t, i) => {
+      const div = document.createElement('div');
+      div.className = 'ranking-item';
+      div.style.padding = '10px';
+      div.innerHTML = `<div style="display:flex;align-items:center;gap:12px">
+        <div class="ranking-position" style="min-width:40px;padding:8px">${i+1}º</div>
+        <div style="flex:1">
+          <div style="font-weight:800">${t.name}</div>
+          <div class="small">${t.count} sessão${t.count>1?'es':''}</div>
+        </div>
+        <div style="min-width:100px;text-align:right;font-weight:700">${((t.count / clientObj.count)*100).toFixed(1)}%</div>
+      </div>`;
+      clientModalTopTypes.appendChild(div);
+    });
+  }
+
+  // Histórico de agendamentos do cliente (apenas pagos e dentro do período atual)
+  clientModalAppointments.innerHTML = '';
+  const sortedAps = (clientObj.appointments || []).slice().sort((a,b) => b.start - a.start);
+  if (sortedAps.length === 0) {
+    clientModalAppointments.innerHTML = '<div class="small">Sem histórico neste período</div>';
+  } else {
+    sortedAps.forEach(ap => {
+      const d = new Date(ap.start);
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.style.padding = '10px';
+      card.innerHTML = `
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+          <div style="flex:1">
+            <div style="font-weight:800">${ap.typeName} • ${formatMoney(ap.price)}</div>
+            <div class="small">${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
+          </div>
+          <div style="min-width:120px;text-align:right" class="small">${ap.status || ''}</div>
+        </div>
+      `;
+      clientModalAppointments.appendChild(card);
+    });
+  }
+
+  // mostra modal
+  clientModal.classList.remove('hidden');
+  clientModal.setAttribute('aria-hidden','false');
+}
+
+/**
+ * Fecha o modal do cliente
+ */
+function closeClientModal() {
+  clientModal.classList.add('hidden');
+  clientModal.setAttribute('aria-hidden','true');
+}
+
 
 // ====================
 // CALENDÁRIO
@@ -1297,17 +1213,9 @@ async function updateDayDetail() {
       const leftInfo = document.createElement('div');
       leftInfo.style.flex = '1';
       leftInfo.style.minWidth = '0';
-      
-      // Buscar dados do cliente e exibir idade
-      const client = allClients[a.userId];
-      const clientAge = client ? calculateAge(client.birthdate) : '';
-      const ageDisplay = clientAge && clientAge !== 'N/A' ? ` (${clientAge} anos)` : '';
-      
-      const clientNameHTML = `<span class="clickable-client-name" onclick="openClientDetail('${a.userId}')" title="Ver detalhes do cliente">${a.clientName}${ageDisplay}</span>`;
-      
       leftInfo.innerHTML = `
         <div style="font-weight:700;margin-bottom:4px">${a.typeName}</div>
-        <div class="small">${clientNameHTML}${a.clientPhone ? ' • ' + a.clientPhone : ''}</div>
+        <div class="small">${a.clientName}${a.clientPhone ? ' • ' + a.clientPhone : ''}</div>
       `;
       
       const statusSelect = document.createElement('select');
@@ -1404,29 +1312,6 @@ async function init() {
     allTypes = await getAllTypes();
     allAppointments = await getAllAppointments();
     
-    // Carregar todos os clientes inicialmente
-    console.log('🔄 Carregando clientes...');
-    const usersSnapshot = await firebase.firestore().collection('users').get();
-    allClients = {};
-    
-    usersSnapshot.forEach(doc => {
-      const data = doc.data();
-      if (data.name && data.email) {
-        allClients[doc.id] = {
-          userId: doc.id,
-          name: data.name,
-          email: data.email,
-          phone: data.phone || '',
-          cpf: data.cpf || '',
-          birthdate: data.birthdate || '',
-          address: data.address || {},
-          createdAt: data.createdAt || Date.now()
-        };
-      }
-    });
-    
-    console.log('✅ Clientes carregados:', Object.keys(allClients).length);
-    
     loadTypesUI();
     renderCalendar();
     
@@ -1459,48 +1344,6 @@ async function init() {
       }
     });
 
-    // Listener em tempo real para mudanças nos perfis de usuários
-    unsubscribeUsers = firebase.firestore().collection('users').onSnapshot(snapshot => {
-      snapshot.docChanges().forEach(change => {
-        const userId = change.doc.id;
-        const data = change.doc.data();
-        
-        if (change.type === 'added' || change.type === 'modified') {
-          if (data.name && data.email) {
-            allClients[userId] = {
-              userId,
-              name: data.name,
-              email: data.email,
-              phone: data.phone || '',
-              cpf: data.cpf || '',
-              birthdate: data.birthdate || '',
-              address: data.address || {},
-              createdAt: data.createdAt || Date.now()
-            };
-            console.log('✅ Cliente atualizado:', data.name);
-          }
-        } else if (change.type === 'removed') {
-          delete allClients[userId];
-          console.log('🗑️ Cliente removido:', userId);
-        }
-      });
-      
-      // Se estamos na aba de clientes, atualizar a UI
-      if (!tabClients.classList.contains('hidden')) {
-        loadClientsUI();
-      }
-      
-      // Atualizar agendamentos e dashboard se estiverem visíveis
-      if (!tabAppointments.classList.contains('hidden')) {
-        loadAppointmentsUI();
-      }
-      if (!tabDashboard.classList.contains('hidden') && selectedDate) {
-        updateDayDetail();
-      }
-    }, error => {
-      console.error('❌ Erro no listener de usuários:', error);
-    });
-
     console.log('✅ Painel administrativo conectado ao Firebase!');
   } catch (error) {
     console.error('Erro na inicialização:', error);
@@ -1511,5 +1354,4 @@ async function init() {
 window.addEventListener('beforeunload', () => {
   if (unsubscribeTypes) unsubscribeTypes();
   if (unsubscribeAppointments) unsubscribeAppointments();
-  if (unsubscribeUsers) unsubscribeUsers();
 });
