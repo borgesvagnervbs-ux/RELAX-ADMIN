@@ -132,7 +132,7 @@ async function logoutAdmin() {
   }
 }
 
-onAuthChange(async (user) => {
+firebase.auth().onAuthStateChanged(async (user) => {
   if (user) {
     currentAdminUser = user;
     
@@ -159,6 +159,7 @@ onAuthChange(async (user) => {
     mainScreenAdmin.classList.add('hidden');
   }
 });
+
 
 // ====================
 // MÁSCARAS E VALIDAÇÕES
@@ -1355,3 +1356,4 @@ window.addEventListener('beforeunload', () => {
   if (unsubscribeTypes) unsubscribeTypes();
   if (unsubscribeAppointments) unsubscribeAppointments();
 });
+
