@@ -61,6 +61,7 @@
         <nav class="sb-menu">
           <div class="sb-item active" data-tab="dashboard">Dashboard</div>
           <div class="sb-item" data-tab="types">Tipos de Massagem</div>
+          <div class="sb-item" data-tab="clients">Clientes</div>
           <div class="sb-item" data-tab="appointments">Agendamentos</div>
           <div class="sb-item" data-tab="finance">Controle Financeiro</div>
         </nav>
@@ -120,6 +121,22 @@
             <button class="btn btn-ghost" id="btnReloadTypes">Atualizar</button>
           </div>
           <div id="typesList" style="margin-top:12px"></div>
+        </section>
+
+        <section class="card hidden" id="tab-clients">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+            <div>
+              <h3>Clientes</h3>
+              <div class="small">Visualize e gerencie os clientes cadastrados</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="text" id="clientSearchInput" class="input" placeholder="Buscar cliente..." style="width:200px"/>
+              <button class="btn btn-ghost" onclick="loadClientsUI()">
+                <i class="fas fa-sync-alt"></i>
+              </button>
+            </div>
+          </div>
+          <div id="clientsList" class="clients-grid"></div>
         </section>
 
         <section class="card hidden" id="tab-appointments">
@@ -252,62 +269,22 @@
             <div class="small" style="margin-bottom:12px">Tipos mais realizados no período</div>
             <div id="massageRanking"></div>
           </div>
-
-          <!-- Ranking de Clientes (novo) -->
-          <div style="margin-top:24px">
-            <h4 style="margin-bottom:12px;font-size:1.15rem">🏅 Ranking de Clientes (Ticket Médio)</h4>
-            <div class="small" style="margin-bottom:12px">Top 5 clientes com maior ticket médio no período (clique no nome para detalhes)</div>
-            <div id="clientRanking"></div>
-          </div>
         </section>
       </main>
     </div>
 
-    <!-- Modal de Cliente (novo) -->
-    <div id="clientModal" class="modal hidden" aria-hidden="true">
-      <div class="modal-backdrop" onclick="closeClientModal()"></div>
-      <div class="modal-card">
+    <!-- Modal de Detalhes do Cliente -->
+    <div id="clientDetailModal" class="modal-overlay hidden" onclick="closeClientModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
         <div class="modal-header">
-          <h3 id="clientModalName">Cliente</h3>
-          <button class="btn btn-ghost btn-sm" onclick="closeClientModal()">Fechar</button>
+          <h2 class="modal-title" id="clientModalTitle">Detalhes do Cliente</h2>
+          <button class="modal-close" onclick="closeClientModal()">&times;</button>
         </div>
-        <div class="modal-body">
-          <div class="row" style="gap:16px;align-items:center;flex-wrap:wrap">
-            <div style="flex:1;min-width:140px">
-              <div class="small">Telefone</div>
-              <div id="clientModalPhone" style="font-weight:700"></div>
-            </div>
-            <div style="flex:1;min-width:140px">
-              <div class="small">Email</div>
-              <div id="clientModalEmail" style="font-weight:700"></div>
-            </div>
-          </div>
-
-          <div style="margin-top:16px">
-            <div class="small">Total gasto (Vitalício no período filtrado)</div>
-            <div id="clientModalTotal" class="client-total">R$ 0,00</div>
-          </div>
-
-          <div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap">
-            <div>
-              <div class="small">Qtd. Sessões</div>
-              <div id="clientModalCount" style="font-weight:700">0</div>
-            </div>
-            <div>
-              <div class="small">Ticket Médio</div>
-              <div id="clientModalAvg" style="font-weight:700">R$ 0,00</div>
-            </div>
-          </div>
-
-          <div style="margin-top:24px">
-            <h4 style="margin-bottom:12px;border-bottom:1px solid #eee;padding-bottom:4px">⭐ Top 3 Tipos Preferidos</h4>
-            <div id="clientModalTopTypes"></div>
-          </div>
-
-          <div style="margin-top:24px">
-            <h4 style="margin-bottom:12px;border-bottom:1px solid #eee;padding-bottom:4px">📜 Histórico (Período Atual)</h4>
-            <div id="clientModalAppointments" class="list" style="max-height:200px;overflow-y:auto"></div>
-          </div>
+        <div class="modal-body" id="clientModalBody">
+          <!-- Conteúdo será inserido dinamicamente -->
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="closeClientModal()">Fechar</button>
         </div>
       </div>
     </div>
@@ -357,19 +334,19 @@
           <h4>Redes Sociais</h4>
           <p style="margin-bottom: 16px;">Siga-nos e fique por dentro das novidades!</p>
           <div class="social-links">
-            <a href="https://wa.me/5554933115500" target="_blank" class="social-link whatsapp" title="WhatsApp">
+            <a href="https://wa.me/5554933115500" target="_blank" rel="noopener" class="social-link whatsapp" title="WhatsApp">
               <i class="fab fa-whatsapp"></i>
               <span>WhatsApp</span>
             </a>
-            <a href="https://facebook.com/massagenszen" target="_blank" class="social-link facebook" title="Facebook">
+            <a href="https://facebook.com/massagenszen" target="_blank" rel="noopener" class="social-link facebook" title="Facebook">
               <i class="fab fa-facebook-f"></i>
               <span>Facebook</span>
             </a>
-            <a href="https://instagram.com/massagenszen" target="_blank" class="social-link instagram" title="Instagram">
+            <a href="https://instagram.com/massagenszen" target="_blank" rel="noopener" class="social-link instagram" title="Instagram">
               <i class="fab fa-instagram"></i>
               <span>Instagram</span>
             </a>
-            <a href="https://maps.google.com/?q=Rua+das+Flores+123+Passo+Fundo" target="_blank" class="social-link location" title="Localização">
+            <a href="https://maps.google.com/?q=Rua+das+Flores+123+Passo+Fundo" target="_blank" rel="noopener" class="social-link location" title="Localização">
               <i class="fas fa-map-marked-alt"></i>
               <span>Localização</span>
             </a>
@@ -378,7 +355,8 @@
       </div>
 
       <div class="footer-bottom">
-        <p>&copy; Massagens Zen</p>
+        <p>&copy; 2025 Massagens Zen. Todos os direitos reservados.</p>
+        <p class="footer-dev">Desenvolvido com 💚 para seu bem-estar</p>
       </div>
     </footer>
   </div>
