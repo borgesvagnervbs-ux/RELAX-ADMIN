@@ -39,6 +39,7 @@ const financeTicketMedio = document.getElementById('financeTicketMedio');
 const financeQuantidade = document.getElementById('financeQuantidade');
 const financeTotal = document.getElementById('financeTotal');
 const massageRanking = document.getElementById('massageRanking');
+const clientRanking = document.getElementById('clientRanking');
 
 let allTypes = [];
 let allAppointments = [];
@@ -341,6 +342,45 @@ function openClientDetail(userId) {
   const totalPaid = clientAppointments.filter(a => a.paid).length;
   const totalValue = clientAppointments.filter(a => a.paid).reduce((sum, a) => sum + Number(a.price), 0);
   
+  // Calcular Top 3 Massagens do Cliente
+  const typeCounts = {};
+  clientAppointments.forEach(ap => {
+    if (ap.paid || ap.status === 'REALIZADO' || ap.status === 'CONFIRMADO') {
+      typeCounts[ap.typeName] = (typeCounts[ap.typeName] || 0) + 1;
+    }
+  });
+
+  const top3Types = Object.entries(typeCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+
+  let top3HTML = '';
+  if (top3Types.length > 0) {
+    top3HTML = `
+      <div class="client-detail-section">
+        <h4><i class="fas fa-trophy"></i> Top 3 Massagens</h4>
+        <div class="small" style="margin-bottom:12px">Tipos mais realizados por este cliente</div>
+        ${top3Types.map((item, index) => {
+          const percentage = (item[1] / Math.max(1, clientAppointments.filter(a => a.paid || a.status === 'REALIZADO' || a.status === 'CONFIRMADO').length)) * 100;
+          return `
+            <div class="ranking-item" style="padding: 10px; margin-bottom: 8px;">
+              <div class="ranking-position" style="font-size: 1.2rem; min-width: 40px; padding: 8px;">${index + 1}º</div>
+              <div class="ranking-info">
+                <div class="ranking-name" style="font-size: 0.95rem;">${item[0]}</div>
+                <div class="ranking-bar-container" style="height: 6px;">
+                  <div class="ranking-bar" style="width: ${percentage}%"></div>
+                </div>
+              </div>
+              <div class="ranking-stats" style="min-width: 60px;">
+                <div class="ranking-count" style="font-size: 0.9rem;">${item[1]}x</div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
   clientModalTitle.textContent = client.name;
   
   let appointmentsHTML = '';
@@ -441,6 +481,8 @@ function openClientDetail(userId) {
         </div>
       </div>
     </div>
+
+    ${top3HTML}
     
     <div class="client-detail-section">
       <h4><i class="fas fa-calendar-check"></i> Histórico de Agendamentos</h4>
@@ -896,14 +938,32 @@ function computeFinanceData() {
   financeQuantidade.textContent = quantidade;
   financeTotal.textContent = formatMoney(total);
   
+  // Ranking de Massagens
   const typeCount = {};
+  // Ranking de Clientes (Ticket Médio)
+  const clientStats = {};
+
   paid.forEach(a => {
+    // Para ranking de massagens
     if (!typeCount[a.typeName]) {
       typeCount[a.typeName] = 0;
     }
     typeCount[a.typeName]++;
+
+    // Para ranking de clientes
+    if (!clientStats[a.userId]) {
+      clientStats[a.userId] = {
+        name: a.clientName || 'Cliente',
+        totalSpent: 0,
+        sessions: 0,
+        userId: a.userId
+      };
+    }
+    clientStats[a.userId].totalSpent += Number(a.price);
+    clientStats[a.userId].sessions++;
   });
   
+  // Renderizar Ranking de Massagens
   const ranking = Object.entries(typeCount)
     .map(([name, count]) => ({
       name,
@@ -916,47 +976,108 @@ function computeFinanceData() {
   
   if (ranking.length === 0) {
     massageRanking.innerHTML = '<div class="small" style="text-align:center;padding:24px;color:var(--text-secondary)">Nenhuma massagem paga no período selecionado</div>';
-    return;
+  } else {
+    ranking.forEach((item, index) => {
+      const rankItem = document.createElement('div');
+      rankItem.className = 'ranking-item';
+      
+      const position = document.createElement('div');
+      position.className = 'ranking-position';
+      position.textContent = `${index + 1}º`;
+      
+      const info = document.createElement('div');
+      info.className = 'ranking-info';
+      
+      const name = document.createElement('div');
+      name.className = 'ranking-name';
+      name.textContent = item.name;
+      
+      const barContainer = document.createElement('div');
+      barContainer.className = 'ranking-bar-container';
+      
+      const bar = document.createElement('div');
+      bar.className = 'ranking-bar';
+      bar.style.width = `${item.percentage}%`;
+      
+      barContainer.appendChild(bar);
+      info.appendChild(name);
+      info.appendChild(barContainer);
+      
+      const stats = document.createElement('div');
+      stats.className = 'ranking-stats';
+      stats.innerHTML = `
+        <div class="ranking-percentage">${item.percentage.toFixed(1)}%</div>
+        <div class="ranking-count">${item.count} sessõ${item.count > 1 ? 'es' : 'ão'}</div>
+      `;
+      
+      rankItem.appendChild(position);
+      rankItem.appendChild(info);
+      rankItem.appendChild(stats);
+      massageRanking.appendChild(rankItem);
+    });
   }
-  
-  ranking.forEach((item, index) => {
-    const rankItem = document.createElement('div');
-    rankItem.className = 'ranking-item';
+
+  // Renderizar Ranking de Clientes (Top 5 Ticket Médio)
+  const clientRankingList = Object.values(clientStats)
+    .map(c => ({
+      ...c,
+      avgTicket: c.totalSpent / c.sessions
+    }))
+    .sort((a, b) => b.avgTicket - a.avgTicket)
+    .slice(0, 5);
+
+  clientRanking.innerHTML = '';
+
+  if (clientRankingList.length === 0) {
+    clientRanking.innerHTML = '<div class="small" style="text-align:center;padding:24px;color:var(--text-secondary)">Nenhum dado disponível no período</div>';
+  } else {
+    const maxAvg = clientRankingList[0].avgTicket;
     
-    const position = document.createElement('div');
-    position.className = 'ranking-position';
-    position.textContent = `${index + 1}º`;
-    
-    const info = document.createElement('div');
-    info.className = 'ranking-info';
-    
-    const name = document.createElement('div');
-    name.className = 'ranking-name';
-    name.textContent = item.name;
-    
-    const barContainer = document.createElement('div');
-    barContainer.className = 'ranking-bar-container';
-    
-    const bar = document.createElement('div');
-    bar.className = 'ranking-bar';
-    bar.style.width = `${item.percentage}%`;
-    
-    barContainer.appendChild(bar);
-    info.appendChild(name);
-    info.appendChild(barContainer);
-    
-    const stats = document.createElement('div');
-    stats.className = 'ranking-stats';
-    stats.innerHTML = `
-      <div class="ranking-percentage">${item.percentage.toFixed(1)}%</div>
-      <div class="ranking-count">${item.count} sessõ${item.count > 1 ? 'es' : 'ão'}</div>
-    `;
-    
-    rankItem.appendChild(position);
-    rankItem.appendChild(info);
-    rankItem.appendChild(stats);
-    massageRanking.appendChild(rankItem);
-  });
+    clientRankingList.forEach((item, index) => {
+      const rankItem = document.createElement('div');
+      rankItem.className = 'ranking-item';
+      
+      const position = document.createElement('div');
+      position.className = 'ranking-position';
+      position.textContent = `${index + 1}º`;
+      
+      const info = document.createElement('div');
+      info.className = 'ranking-info';
+      
+      // Nome clicável
+      const name = document.createElement('div');
+      name.className = 'ranking-name clickable-client-name';
+      name.textContent = item.name;
+      name.onclick = () => openClientDetail(item.userId);
+      name.title = 'Ver cadastro do cliente';
+      
+      const barContainer = document.createElement('div');
+      barContainer.className = 'ranking-bar-container';
+      
+      const bar = document.createElement('div');
+      bar.className = 'ranking-bar';
+      // Barra proporcional ao maior ticket médio da lista
+      const percentage = (item.avgTicket / maxAvg) * 100;
+      bar.style.width = `${percentage}%`;
+      
+      barContainer.appendChild(bar);
+      info.appendChild(name);
+      info.appendChild(barContainer);
+      
+      const stats = document.createElement('div');
+      stats.className = 'ranking-stats';
+      stats.style.minWidth = '100px';
+      stats.innerHTML = `
+        <div class="ranking-percentage" style="font-size: 1rem;">${formatMoney(item.avgTicket)}</div>
+        <div class="ranking-count">${item.sessions} sessõ${item.sessions > 1 ? 'es' : 'ão'}</div>
+      `;
+      
+      rankItem.appendChild(position);
+      rankItem.appendChild(info);
+      rankItem.appendChild(stats);
+      clientRanking.appendChild(rankItem);
+    });
+  }
 }
 
 // ====================
