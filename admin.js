@@ -1356,4 +1356,3 @@ window.addEventListener('beforeunload', () => {
   if (unsubscribeTypes) unsubscribeTypes();
   if (unsubscribeAppointments) unsubscribeAppointments();
 });
-
