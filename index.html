@@ -256,7 +256,7 @@
           <!-- Ranking de Clientes (novo) -->
           <div style="margin-top:24px">
             <h4 style="margin-bottom:12px;font-size:1.15rem">🏅 Ranking de Clientes (Ticket Médio)</h4>
-            <div class="small" style="margin-bottom:12px">Top 5 clientes por ticket médio no período (clique no nome para ver cadastro/relatório)</div>
+            <div class="small" style="margin-bottom:12px">Top 5 clientes com maior ticket médio no período (clique no nome para detalhes)</div>
             <div id="clientRanking"></div>
           </div>
         </section>
@@ -272,41 +272,41 @@
           <button class="btn btn-ghost btn-sm" onclick="closeClientModal()">Fechar</button>
         </div>
         <div class="modal-body">
-          <div class="row" style="gap:16px;align-items:center">
-            <div style="flex:1">
+          <div class="row" style="gap:16px;align-items:center;flex-wrap:wrap">
+            <div style="flex:1;min-width:140px">
               <div class="small">Telefone</div>
               <div id="clientModalPhone" style="font-weight:700"></div>
             </div>
-            <div style="flex:1">
+            <div style="flex:1;min-width:140px">
               <div class="small">Email</div>
               <div id="clientModalEmail" style="font-weight:700"></div>
             </div>
           </div>
 
           <div style="margin-top:16px">
-            <div class="small">Total gasto</div>
+            <div class="small">Total gasto (Vitalício no período filtrado)</div>
             <div id="clientModalTotal" class="client-total">R$ 0,00</div>
           </div>
 
           <div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap">
             <div>
-              <div class="small">Quantidade de sessões</div>
+              <div class="small">Qtd. Sessões</div>
               <div id="clientModalCount" style="font-weight:700">0</div>
             </div>
             <div>
-              <div class="small">Ticket médio</div>
+              <div class="small">Ticket Médio</div>
               <div id="clientModalAvg" style="font-weight:700">R$ 0,00</div>
             </div>
           </div>
 
-          <div style="margin-top:18px">
-            <h4 style="margin-bottom:8px">Top 3 massagens deste cliente</h4>
+          <div style="margin-top:24px">
+            <h4 style="margin-bottom:12px;border-bottom:1px solid #eee;padding-bottom:4px">⭐ Top 3 Tipos Preferidos</h4>
             <div id="clientModalTopTypes"></div>
           </div>
 
-          <div style="margin-top:14px">
-            <h4 style="margin-bottom:8px">Histórico de agendamentos (pagos) neste período</h4>
-            <div id="clientModalAppointments" class="list"></div>
+          <div style="margin-top:24px">
+            <h4 style="margin-bottom:12px;border-bottom:1px solid #eee;padding-bottom:4px">📜 Histórico (Período Atual)</h4>
+            <div id="clientModalAppointments" class="list" style="max-height:200px;overflow-y:auto"></div>
           </div>
         </div>
       </div>
