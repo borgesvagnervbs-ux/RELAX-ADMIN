@@ -1597,7 +1597,7 @@ textarea {
   background: white;
   border-radius: var(--radius);
   padding: 24px;
-  max-width: 600px;
+  max-width: 700px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
@@ -2229,3 +2229,4 @@ select:focus-visible,
     grid-template-columns: 1fr;
   }
 }
+
