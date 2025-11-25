@@ -1931,17 +1931,19 @@ select:focus-visible,
 }
 
 
-/* Exibe o valor total do cliente sem o efeito de background-clip (para evitar corte) */
+/* --- CORREÇÃO DO CORTE DE TEXTO SOLICITADA --- */
+/* Exibe o valor total do cliente sem o efeito de background-clip e com cor sólida */
 .client-total {
   font-size: 1.6rem;
   font-weight: 900;
-  color: var(--text);
-  -webkit-text-fill-color: unset !important;
-  -webkit-background-clip: unset !important;
-  background-clip: unset !important;
+  color: var(--primary); /* Cor sólida para garantir visibilidade */
+  -webkit-text-fill-color: initial !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
   text-overflow: clip;
   white-space: nowrap;
   overflow: visible;
+  line-height: 1.2;
 }
 
 /* Lista de top types do cliente */
