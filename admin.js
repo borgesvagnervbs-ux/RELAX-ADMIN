@@ -643,7 +643,7 @@ function computeFinanceData() {
   financeQuantidade.textContent = quantidade;
   financeTotal.textContent = formatMoney(total);
   
-  // Ranking de massagens (mantido)
+  // Ranking de massagens
   const typeCount = {};
   paid.forEach(a => {
     if (!typeCount[a.typeName]) {
@@ -705,24 +705,34 @@ function computeFinanceData() {
     });
   }
 
-  // NOVO: construir ranking de clientes (top 5 por ticket médio)
+  // Novo: construir ranking de clientes (top 5 por ticket médio)
   buildClientRanking(paid);
 }
 
 /**
- * Build client ranking from array of paid appointments
- * - paidAppointments: array of appointments already filtered by period and paid === true
+ * Constrói ranking de clientes baseado em array de agendamentos pagos
  */
 function buildClientRanking(paidAppointments) {
   // Agrupa por cliente (chave: nome + phone para reduzir colisões)
   const clients = {};
   paidAppointments.forEach(a => {
     const key = (a.clientName || 'Cliente sem nome') + '||' + (a.clientPhone || '');
-    if (!clients[key]) clients[key] = { name: a.clientName || '—', phone: a.clientPhone || '', email: a.clientEmail || '', total: 0, count: 0, types: {} , appointments: [] };
+    if (!clients[key]) {
+        clients[key] = { 
+            name: a.clientName || '—', 
+            phone: a.clientPhone || '', 
+            email: a.clientEmail || '', 
+            total: 0, 
+            count: 0, 
+            types: {}, 
+            appointments: [] 
+        };
+    }
     clients[key].total += Number(a.price || 0);
     clients[key].count += 1;
     clients[key].appointments.push(a);
-    // tipos
+    
+    // Contagem de tipos
     const tn = a.typeName || '—';
     if (!clients[key].types[tn]) clients[key].types[tn] = 0;
     clients[key].types[tn]++;
@@ -770,14 +780,14 @@ function buildClientRanking(paidAppointments) {
     const name = document.createElement('div');
     name.className = 'ranking-name';
     // mostra nome clicável (com telefone ao lado, se houver)
-    name.innerHTML = `<span style="text-decoration:underline">${c.name}</span>` + (c.phone ? ` <span class="small" style="margin-left:8px;color:var(--text-secondary)">${c.phone}</span>` : '');
+    name.innerHTML = `<span style="text-decoration:underline;color:var(--primary-dark)">${c.name}</span>` + (c.phone ? ` <span class="small" style="margin-left:8px;color:var(--text-secondary)">${c.phone}</span>` : '');
 
     const barContainer = document.createElement('div');
     barContainer.className = 'ranking-bar-container';
     const bar = document.createElement('div');
     bar.className = 'ranking-bar';
-    // barra proporcional ao ticket médio relativo ao maior ticket do conjunto (para visual)
-    const maxTicket = arr.length ? Math.max(...arr.map(x => x.ticketAvg)) : c.ticketAvg;
+    // barra proporcional ao ticket médio relativo ao maior ticket do conjunto
+    const maxTicket = top5.length ? top5[0].ticketAvg : c.ticketAvg;
     const widthPercent = maxTicket > 0 ? (c.ticketAvg / maxTicket) * 100 : 0;
     bar.style.width = `${widthPercent}%`;
 
@@ -789,7 +799,7 @@ function buildClientRanking(paidAppointments) {
     stats.className = 'ranking-stats';
     stats.innerHTML = `
       <div class="ranking-percentage">${formatMoney(c.ticketAvg)}</div>
-      <div class="ranking-count">${c.count} sessões</div>
+      <div class="ranking-count" style="font-size:0.75rem">Ticket Médio</div>
     `;
 
     item.appendChild(position);
@@ -801,19 +811,18 @@ function buildClientRanking(paidAppointments) {
 }
 
 /**
- * Abre o modal do cliente com informações agregadas
- * - clientObj: objeto gerado em buildClientRanking
+ * Abre o modal do cliente com informações agregadas e Top 3 tipos
  */
 function openClientModal(clientObj) {
-  // populates modal fields
+  // Popula campos principais
   clientModalName.textContent = clientObj.name || '—';
   clientModalPhone.textContent = clientObj.phone || '—';
   clientModalEmail.textContent = clientObj.email || '—';
-  clientModalTotal.textContent = formatMoney(clientObj.total || 0); // exibe valor completo, formatMoney retorna "R$ X,XX"
+  clientModalTotal.textContent = formatMoney(clientObj.total || 0); 
   clientModalCount.textContent = clientObj.count || 0;
   clientModalAvg.textContent = formatMoney(clientObj.ticketAvg || 0);
 
-  // Top 3 tipos do cliente
+  // Top 3 tipos de massagem do cliente
   const typesArr = Object.entries(clientObj.types || {}).map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 3);
@@ -826,13 +835,18 @@ function openClientModal(clientObj) {
       const div = document.createElement('div');
       div.className = 'ranking-item';
       div.style.padding = '10px';
-      div.innerHTML = `<div style="display:flex;align-items:center;gap:12px">
-        <div class="ranking-position" style="min-width:40px;padding:8px">${i+1}º</div>
+      div.style.marginBottom = '8px';
+      div.style.cursor = 'default';
+      div.style.boxShadow = 'none';
+      div.style.border = '1px solid #eee';
+      
+      div.innerHTML = `<div style="display:flex;align-items:center;gap:12px;width:100%">
+        <div class="ranking-position" style="min-width:32px;padding:6px;font-size:1rem">${i+1}º</div>
         <div style="flex:1">
-          <div style="font-weight:800">${t.name}</div>
-          <div class="small">${t.count} sessão${t.count>1?'es':''}</div>
+          <div style="font-weight:700;font-size:0.95rem">${t.name}</div>
+          <div class="small" style="font-size:0.8rem">${t.count} sessão${t.count>1?'es':''}</div>
         </div>
-        <div style="min-width:100px;text-align:right;font-weight:700">${((t.count / clientObj.count)*100).toFixed(1)}%</div>
+        <div style="min-width:60px;text-align:right;font-weight:700;color:var(--primary)">${((t.count / clientObj.count)*100).toFixed(0)}%</div>
       </div>`;
       clientModalTopTypes.appendChild(div);
     });
@@ -849,27 +863,25 @@ function openClientModal(clientObj) {
       const card = document.createElement('div');
       card.className = 'card';
       card.style.padding = '10px';
+      card.style.marginBottom = '8px';
       card.innerHTML = `
         <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
           <div style="flex:1">
-            <div style="font-weight:800">${ap.typeName} • ${formatMoney(ap.price)}</div>
-            <div class="small">${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
+            <div style="font-weight:700;font-size:0.9rem">${ap.typeName} • ${formatMoney(ap.price)}</div>
+            <div class="small" style="font-size:0.8rem">${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
           </div>
-          <div style="min-width:120px;text-align:right" class="small">${ap.status || ''}</div>
+          <div style="text-align:right"><span class="status-badge status-${ap.status.toLowerCase()}">${ap.status}</span></div>
         </div>
       `;
       clientModalAppointments.appendChild(card);
     });
   }
 
-  // mostra modal
+  // Mostra modal
   clientModal.classList.remove('hidden');
   clientModal.setAttribute('aria-hidden','false');
 }
 
-/**
- * Fecha o modal do cliente
- */
 function closeClientModal() {
   clientModal.classList.add('hidden');
   clientModal.setAttribute('aria-hidden','true');
