@@ -1,3 +1,6 @@
+// admin.js - Painel Administrativo Completo com Gestão de Clientes
+
+// Elementos da UI
 const loginScreenAdmin = document.getElementById('loginScreenAdmin');
 const mainScreenAdmin = document.getElementById('mainScreenAdmin');
 const sidebar = document.getElementById('sidebar');
@@ -1278,11 +1281,14 @@ async function updateDayDetail() {
   
   selectedDayTitle.textContent = selectedDate.toLocaleDateString('pt-BR', {weekday:'long', day:'2-digit', month:'long', year:'numeric'});
   selectedDaySub.textContent = '';
-  hourlyList.innerHTML = '';
   
   const dateStr = toDateStr(selectedDate);
   currentDayAvailability = await getDayAvailability(dateStr);
   
+  // Limpa a lista APÓS a operação assíncrona para evitar condição de corrida
+  // onde múltiplos chamados podem adicionar conteúdo duplicado
+  hourlyList.innerHTML = '';
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const isPastDate = selectedDate < today;
@@ -1631,4 +1637,3 @@ window.addEventListener('beforeunload', () => {
   if (unsubscribeAppointments) unsubscribeAppointments();
   if (unsubscribeUsers) unsubscribeUsers();
 });
-
