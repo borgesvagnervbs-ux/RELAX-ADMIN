@@ -12,7 +12,6 @@ const tabTypes = document.getElementById('tab-types');
 const tabClients = document.getElementById('tab-clients');
 const tabAppointments = document.getElementById('tab-appointments');
 const tabFinance = document.getElementById('tab-finance');
-const tabBackup = document.getElementById('tab-backup'); // Nova Aba
 const typeName = document.getElementById('typeName');
 const typePrice = document.getElementById('typePrice');
 const typesList = document.getElementById('typesList');
@@ -41,12 +40,6 @@ const financeQuantidade = document.getElementById('financeQuantidade');
 const financeTotal = document.getElementById('financeTotal');
 const massageRanking = document.getElementById('massageRanking');
 const clientRanking = document.getElementById('clientRanking');
-
-// Elementos de Backup
-const btnGenerateBackup = document.getElementById('btnGenerateBackup');
-const btnRestoreBackup = document.getElementById('btnRestoreBackup');
-const backupFileInput = document.getElementById('backupFileInput');
-const restoreStatus = document.getElementById('restoreStatus');
 
 let allTypes = [];
 let allAppointments = [];
@@ -257,7 +250,6 @@ function openTab(tab) {
   tabClients.classList.add('hidden');
   tabAppointments.classList.add('hidden');
   tabFinance.classList.add('hidden');
-  tabBackup.classList.add('hidden');
   
   if (tab === 'dashboard') tabDashboard.classList.remove('hidden');
   if (tab === 'types') tabTypes.classList.remove('hidden');
@@ -270,7 +262,6 @@ function openTab(tab) {
     tabFinance.classList.remove('hidden');
     computeFinanceData();
   }
-  if (tab === 'backup') tabBackup.classList.remove('hidden');
 }
 
 // ====================
@@ -1090,96 +1081,6 @@ function computeFinanceData() {
 }
 
 // ====================
-// BACKUP E RESTAURAÇÃO
-// ====================
-
-// Gerar Backup
-btnGenerateBackup.addEventListener('click', async () => {
-  btnGenerateBackup.disabled = true;
-  btnGenerateBackup.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...';
-  
-  try {
-    const backupData = await getFullBackup();
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
-    const downloadAnchorNode = document.createElement('a');
-    
-    const date = new Date();
-    const fileName = `backup_massagens_${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')}.json`;
-    
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", fileName);
-    document.body.appendChild(downloadAnchorNode); // required for firefox
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-    
-    alert('Backup gerado e download iniciado com sucesso!');
-  } catch (error) {
-    console.error('Erro ao gerar backup:', error);
-    alert('Erro ao gerar backup: ' + error.message);
-  } finally {
-    btnGenerateBackup.disabled = false;
-    btnGenerateBackup.innerHTML = '<i class="fas fa-file-export"></i> Gerar e Baixar Backup';
-  }
-});
-
-// Acionar input de arquivo
-btnRestoreBackup.addEventListener('click', () => {
-  backupFileInput.value = ''; // Reset input
-  restoreStatus.textContent = '';
-  restoreStatus.className = 'small';
-  backupFileInput.click();
-});
-
-// Ler arquivo e restaurar
-backupFileInput.addEventListener('change', (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
-  
-  if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
-    alert('Por favor, selecione um arquivo JSON válido.');
-    return;
-  }
-  
-  if (!confirm('ATENÇÃO: Esta ação irá substituir dados existentes no banco de dados com as informações do arquivo de backup. Deseja continuar?')) {
-    backupFileInput.value = '';
-    return;
-  }
-  
-  const reader = new FileReader();
-  
-  reader.onload = async (e) => {
-    try {
-      btnRestoreBackup.disabled = true;
-      btnRestoreBackup.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Restaurando...';
-      restoreStatus.textContent = 'Processando arquivo...';
-      restoreStatus.style.color = 'var(--text-secondary)';
-      
-      const jsonData = JSON.parse(e.target.result);
-      await restoreBackup(jsonData);
-      
-      restoreStatus.textContent = 'Backup restaurado com sucesso! A página será recarregada.';
-      restoreStatus.style.color = 'var(--success)';
-      
-      setTimeout(() => {
-        location.reload();
-      }, 2000);
-      
-    } catch (error) {
-      console.error('Erro na restauração:', error);
-      restoreStatus.textContent = 'Erro ao restaurar: ' + error.message;
-      restoreStatus.style.color = 'var(--danger)';
-      alert('Erro ao restaurar backup. Verifique o console para mais detalhes.');
-      
-      btnRestoreBackup.disabled = false;
-      btnRestoreBackup.innerHTML = '<i class="fas fa-file-import"></i> Selecionar Arquivo e Restaurar';
-    }
-  };
-  
-  reader.readAsText(file);
-});
-
-
-// ====================
 // CALENDÁRIO
 // ====================
 
@@ -1733,4 +1634,3 @@ window.addEventListener('beforeunload', () => {
   if (unsubscribeAppointments) unsubscribeAppointments();
   if (unsubscribeUsers) unsubscribeUsers();
 });
-
