@@ -1,4 +1,3 @@
-
 // admin.js - Painel Administrativo Completo com Gestão de Clientes
 
 // Elementos da UI
@@ -1734,3 +1733,4 @@ window.addEventListener('beforeunload', () => {
   if (unsubscribeAppointments) unsubscribeAppointments();
   if (unsubscribeUsers) unsubscribeUsers();
 });
+
