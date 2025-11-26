@@ -1,6 +1,3 @@
-// admin.js - Painel Administrativo Completo com Gestão de Clientes
-
-// Elementos da UI
 const loginScreenAdmin = document.getElementById('loginScreenAdmin');
 const mainScreenAdmin = document.getElementById('mainScreenAdmin');
 const sidebar = document.getElementById('sidebar');
@@ -1634,3 +1631,4 @@ window.addEventListener('beforeunload', () => {
   if (unsubscribeAppointments) unsubscribeAppointments();
   if (unsubscribeUsers) unsubscribeUsers();
 });
+
