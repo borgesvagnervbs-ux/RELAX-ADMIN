@@ -64,7 +64,6 @@
           <div class="sb-item" data-tab="clients">Clientes</div>
           <div class="sb-item" data-tab="appointments">Agendamentos</div>
           <div class="sb-item" data-tab="finance">Controle Financeiro</div>
-          <div class="sb-item" data-tab="backup">Backup e Restauração</div>
         </nav>
 
         <div class="sb-footer">
@@ -280,45 +279,6 @@
             </div>
           </div>
         </section>
-
-        <!-- Nova Seção de Backup -->
-        <section class="card hidden" id="tab-backup">
-          <h3>Backup e Restauração</h3>
-          <div class="small">Gerencie a segurança dos seus dados</div>
-
-          <div class="row" style="margin-top:24px; gap: 24px;">
-            <!-- Exportar -->
-            <div class="col">
-              <div class="backup-card">
-                <div class="backup-icon">
-                  <i class="fas fa-file-export"></i>
-                </div>
-                <h4 style="margin-bottom:8px">Exportar Dados</h4>
-                <p class="small" style="margin-bottom:16px">Gera um arquivo JSON contendo todos os clientes, agendamentos, tipos e configurações.</p>
-                <button class="btn btn-primary" id="btnGenerateBackup" style="width:100%">
-                  <i class="fas fa-download"></i> Gerar e Baixar Backup
-                </button>
-              </div>
-            </div>
-
-            <!-- Importar -->
-            <div class="col">
-              <div class="backup-card danger-zone">
-                <div class="backup-icon danger">
-                  <i class="fas fa-file-import"></i>
-                </div>
-                <h4 style="margin-bottom:8px">Restaurar Dados</h4>
-                <p class="small" style="margin-bottom:16px">Substitui o banco de dados atual por um arquivo de backup anterior. Cuidado!</p>
-                <input type="file" id="backupFileInput" accept=".json" style="display:none" />
-                <button class="btn btn-danger" id="btnRestoreBackup" style="width:100%">
-                  <i class="fas fa-upload"></i> Selecionar Arquivo e Restaurar
-                </button>
-                <div id="restoreStatus" class="small" style="margin-top:12px; font-weight:600"></div>
-              </div>
-            </div>
-          </div>
-        </section>
-
       </main>
     </div>
 
