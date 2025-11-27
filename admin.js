@@ -255,7 +255,9 @@ function openTab(tab) {
   tabClients.classList.add('hidden');
   tabAppointments.classList.add('hidden');
   tabFinance.classList.add('hidden');
-  
+  // Adicione esta linha para garantir que a aba de backup seja sempre ocultada ao trocar de tela
+  document.getElementById('tab-backup').classList.add('hidden');
+
   if (tab === 'dashboard') tabDashboard.classList.remove('hidden');
   if (tab === 'types') tabTypes.classList.remove('hidden');
   if (tab === 'clients') {
@@ -1727,3 +1729,4 @@ window.addEventListener('beforeunload', () => {
   if (unsubscribeAppointments) unsubscribeAppointments();
   if (unsubscribeUsers) unsubscribeUsers();
 });
+
