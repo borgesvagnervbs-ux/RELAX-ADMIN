@@ -46,6 +46,12 @@ const btnExportBackup = document.getElementById('btnExportBackup');
 const inputRestoreBackup = document.getElementById('inputRestoreBackup');
 const backupStatus = document.getElementById('backupStatus');
 
+const MAX_BACKUP_TIMES = 24;
+const backupScheduleList = document.getElementById('backupScheduleList');
+const addBackupTimeBtn = document.getElementById('addBackupTimeBtn');
+const backupScheduleForm = document.getElementById('backupScheduleForm');
+const scheduleMsg = document.getElementById('scheduleMsg');
+
 let allTypes = [];
 let allAppointments = [];
 let allClients = {};
@@ -1611,6 +1617,180 @@ if (btnExportBackup && inputRestoreBackup) {
   });
 }
 
+function getSavedBackupSchedule() {
+  try {
+    return JSON.parse(localStorage.getItem('backupSchedule') || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function saveBackupSchedule(schedule) {
+  localStorage.setItem('backupSchedule', JSON.stringify(schedule));
+}
+
+function renderBackupScheduleForm() {
+  const schedule = getSavedBackupSchedule();
+  backupScheduleList.innerHTML = '';
+  
+  schedule.forEach((item, idx) => {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.style.marginBottom = '8px';
+    row.style.alignItems = 'center';
+
+    // Horário
+    const timeInput = document.createElement('input');
+    timeInput.type = 'time';
+    timeInput.className = 'input';
+    timeInput.style.width = '120px';
+    timeInput.value = item.time;
+    timeInput.required = true;
+    timeInput.disabled = !!schedule[0].interval && idx > 0; // Bloqueia se intervalo preenchido
+
+    // Intervalo (apenas no primeiro)
+    let intervalInput = null;
+    if (idx === 0) {
+      intervalInput = document.createElement('input');
+      intervalInput.type = 'number';
+      intervalInput.className = 'input';
+      intervalInput.style.width = '120px';
+      intervalInput.placeholder = 'Intervalo (min)';
+      intervalInput.min = 1;
+      intervalInput.max = 1440;
+      intervalInput.value = item.interval || '';
+      intervalInput.addEventListener('input', () => {
+        if (intervalInput.value) {
+          // Preencher automaticamente os horários
+          const baseTime = timeInput.value;
+          const intervalMin = parseInt(intervalInput.value, 10);
+          if (!baseTime || isNaN(intervalMin) || intervalMin <= 0) return;
+          const timesArr = [];
+          let [h, m] = baseTime.split(':').map(Number);
+          for (let i = 0; i < MAX_BACKUP_TIMES; i++) {
+            if (h > 23 || (h === 23 && m > 59)) break;
+            timesArr.push({
+              time: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
+              interval: intervalMin
+            });
+            m += intervalMin;
+            while (m >= 60) { m -= 60; h += 1; }
+            if (h > 23) break;
+          }
+          saveBackupSchedule(timesArr);
+          renderBackupScheduleForm();
+        } else {
+          // Limpa os demais horários e permite adicionar manualmente
+          saveBackupSchedule([{
+            time: timeInput.value,
+            interval: ''
+          }]);
+          renderBackupScheduleForm();
+        }
+      });
+    }
+
+    // Remover botão (exceto se só houver um)
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn btn-danger btn-sm';
+    removeBtn.textContent = 'Remover';
+    removeBtn.style.marginLeft = '8px';
+    removeBtn.disabled = !!schedule[0].interval && idx > 0; // Bloqueia se intervalo preenchido
+    removeBtn.onclick = () => {
+      schedule.splice(idx, 1);
+      saveBackupSchedule(schedule);
+      renderBackupScheduleForm();
+    };
+
+    // Atualiza horário manualmente
+    timeInput.addEventListener('change', () => {
+      schedule[idx].time = timeInput.value;
+      saveBackupSchedule(schedule);
+      renderBackupScheduleForm();
+    });
+
+    row.appendChild(timeInput);
+
+    if (intervalInput) {
+      row.appendChild(intervalInput);
+      // Label para intervalo
+      const lbl = document.createElement('span');
+      lbl.textContent = 'min';
+      lbl.style.marginLeft = '4px';
+      row.appendChild(lbl);
+    }
+
+    if (schedule.length > 1 || idx > 0) row.appendChild(removeBtn);
+
+    backupScheduleList.appendChild(row);
+  });
+
+  // Se não houver nenhum horário, adiciona um por padrão
+  if (schedule.length === 0) {
+    saveBackupSchedule([{ time: '', interval: '' }]);
+    renderBackupScheduleForm();
+  }
+
+  // Botão de adicionar só aparece se não tiver intervalo preenchido e menos de MAX_BACKUP_TIMES
+  addBackupTimeBtn.disabled = !!schedule[0].interval || schedule.length >= MAX_BACKUP_TIMES;
+}
+
+addBackupTimeBtn.addEventListener('click', () => {
+  const schedule = getSavedBackupSchedule();
+  if (schedule.length >= MAX_BACKUP_TIMES) return;
+  schedule.push({ time: '', interval: '' });
+  saveBackupSchedule(schedule);
+  renderBackupScheduleForm();
+});
+
+backupScheduleForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const schedule = getSavedBackupSchedule();
+  // Validação básica
+  if (!schedule.length || !schedule[0].time) {
+    scheduleMsg.textContent = "Defina pelo menos um horário!";
+    scheduleMsg.style.color = "#991b1b";
+    return;
+  }
+  if (!!schedule[0].interval && (!schedule[0].time || isNaN(parseInt(schedule[0].interval)))) {
+    scheduleMsg.textContent = "Preencha um horário inicial e um intervalo válido!";
+    scheduleMsg.style.color = "#991b1b";
+    return;
+  }
+  saveBackupSchedule(schedule);
+  scheduleMsg.textContent = "Agendamento salvo!";
+  scheduleMsg.style.color = "#059669";
+});
+
+// Renderiza ao abrir a aba de backup
+document.querySelector('.sb-item[data-tab="backup"]').addEventListener('click', () => {
+  renderBackupScheduleForm();
+});
+
+// Opcional: Exemplo de como você poderia disparar backups automáticos em background usando setInterval
+// (Apenas enquanto a página estiver aberta! Para agendamento real use Cloud Functions ou cron jobs no backend)
+function checkAndRunScheduledBackups() {
+  const schedule = getSavedBackupSchedule();
+  if (!schedule.length) return;
+  
+  const nowStr = new Date().toTimeString().slice(0,5); // "HH:MM"
+  
+  for (const item of schedule) {
+    if (item.time === nowStr && !window._lastBackupRun?.includes(nowStr)) {
+      // Chame aqui sua função de backup automático!
+      // Exemplo:
+      // gerarBackupAutomatico();
+      window._lastBackupRun = window._lastBackupRun || [];
+      window._lastBackupRun.push(nowStr);
+      setTimeout(() => {
+        window._lastBackupRun = window._lastBackupRun.filter(t => t !== nowStr);
+      },60000); // Libera para rodar novamente após um minuto
+    }
+  }
+}
+setInterval(checkAndRunScheduledBackups,30000); // Checa a cada meio minuto
+
 // ====================
 // INICIALIZAÇÃO
 // ====================
@@ -1729,4 +1909,5 @@ window.addEventListener('beforeunload', () => {
   if (unsubscribeAppointments) unsubscribeAppointments();
   if (unsubscribeUsers) unsubscribeUsers();
 });
+
 
