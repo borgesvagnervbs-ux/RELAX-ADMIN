@@ -41,6 +41,11 @@ const financeTotal = document.getElementById('financeTotal');
 const massageRanking = document.getElementById('massageRanking');
 const clientRanking = document.getElementById('clientRanking');
 
+// Elementos de Backup
+const btnExportBackup = document.getElementById('btnExportBackup');
+const inputRestoreBackup = document.getElementById('inputRestoreBackup');
+const backupStatus = document.getElementById('backupStatus');
+
 let allTypes = [];
 let allAppointments = [];
 let allClients = {};
@@ -261,6 +266,10 @@ function openTab(tab) {
   if (tab === 'finance') {
     tabFinance.classList.remove('hidden');
     computeFinanceData();
+  }
+  if (tab === 'backup') {
+    document.getElementById('tab-backup').classList.remove('hidden');
+    document.getElementById('backupStatus').textContent = '';
   }
 }
 
@@ -1518,6 +1527,87 @@ btnToday.addEventListener('click', () => {
   
   updateDayDetail();
 });
+
+if (btnExportBackup && inputRestoreBackup) {
+  btnExportBackup.addEventListener('click', async () => {
+    backupStatus.textContent = 'Gerando backup...';
+    try {
+      // Baixar todas as coleções
+      const [typesSnap, apptsSnap, availSnap, usersSnap] = await Promise.all([
+        firebase.firestore().collection('massage_types').get(),
+        firebase.firestore().collection('appointments').get(),
+        firebase.firestore().collection('availability').get(),
+        firebase.firestore().collection('users').get()
+      ]);
+      const backup = {
+        massage_types: typesSnap.docs.map(d => d.data()),
+        appointments: apptsSnap.docs.map(d => d.data()),
+        availability: availSnap.docs.map(d => d.data()),
+        users: usersSnap.docs.map(d => d.data()),
+        _meta: { generatedAt: new Date().toISOString() }
+      };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], {type: "application/json"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "backup-massagens-zen-" + new Date().toISOString().slice(0,19).replace(/[:T]/g,"-") + ".json";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+      backupStatus.textContent = "Backup gerado com sucesso!";
+    } catch (e) {
+      console.error(e);
+      backupStatus.textContent = "Erro ao gerar backup!";
+    }
+  });
+
+  inputRestoreBackup.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!confirm("Restaurar backup irá sobrescrever TODOS os dados atuais. Deseja continuar?")) {
+      inputRestoreBackup.value = "";
+      return;
+    }
+    backupStatus.textContent = "Restaurando backup...";
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+
+      // Função para sobrescrever uma coleção
+      async function restoreCollection(colName, arr, keyField) {
+        const colRef = firebase.firestore().collection(colName);
+        // Apagar todos os docs existentes
+        const snap = await colRef.get();
+        const batchDel = firebase.firestore().batch();
+        snap.forEach(doc => batchDel.delete(doc.ref));
+        await batchDel.commit();
+
+        // Adicionar docs do backup
+        for (const doc of arr) {
+          let docId = doc[keyField] || doc.id || undefined;
+          if (!docId) docId = colRef.doc().id;
+          await colRef.doc(docId).set(doc);
+        }
+      }
+
+      // Restaurar cada coleção
+      await restoreCollection("massage_types", data.massage_types || [], "id");
+      await restoreCollection("appointments", data.appointments || [], "id");
+      await restoreCollection("availability", data.availability || [], "date");
+      await restoreCollection("users", data.users || [], "uid");
+
+      backupStatus.textContent = "Backup restaurado com sucesso! Recarregue a página para ver as alterações.";
+    } catch (e) {
+      console.error(e);
+      backupStatus.textContent = "Erro ao restaurar backup!";
+    } finally {
+      inputRestoreBackup.value = "";
+    }
+  });
+}
 
 // ====================
 // INICIALIZAÇÃO
