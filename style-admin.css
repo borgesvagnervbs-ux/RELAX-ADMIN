@@ -2229,3 +2229,7 @@ select:focus-visible,
     grid-template-columns: 1fr;
   }
 }
+.sb-item[data-tab="backup"]::before {
+  content: "🗄️";
+  margin-right:8px;
+}
