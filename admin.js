@@ -1,4 +1,4 @@
-// admin.js - Painel Administrativo Completo com Gestão de Clientes
+// admin.js - Painel Administrativo Completo com Gestão de Clientes e Horários
 
 // Elementos da UI
 const loginScreenAdmin = document.getElementById('loginScreenAdmin');
@@ -8,6 +8,7 @@ const btnMenu = document.getElementById('btnMenu');
 const mainContent = document.getElementById('mainContent');
 const sbItems = Array.from(document.querySelectorAll('.sb-item'));
 const tabDashboard = document.getElementById('tab-dashboard');
+const tabSchedule = document.getElementById('tab-schedule');
 const tabTypes = document.getElementById('tab-types');
 const tabClients = document.getElementById('tab-clients');
 const tabAppointments = document.getElementById('tab-appointments');
@@ -33,6 +34,34 @@ const adminGreeting = document.getElementById('adminGreeting');
 const clientDetailModal = document.getElementById('clientDetailModal');
 const clientModalTitle = document.getElementById('clientModalTitle');
 const clientModalBody = document.getElementById('clientModalBody');
+
+// Elementos do modal de adicionar cliente
+const addClientModal = document.getElementById('addClientModal');
+const newClientName = document.getElementById('newClientName');
+const newClientPhone = document.getElementById('newClientPhone');
+const newClientCpf = document.getElementById('newClientCpf');
+const newClientBirthdate = document.getElementById('newClientBirthdate');
+const newClientEmail = document.getElementById('newClientEmail');
+const newClientCep = document.getElementById('newClientCep');
+const newClientStreet = document.getElementById('newClientStreet');
+const newClientNumber = document.getElementById('newClientNumber');
+const newClientComplement = document.getElementById('newClientComplement');
+const newClientNeighborhood = document.getElementById('newClientNeighborhood');
+const newClientCity = document.getElementById('newClientCity');
+const newClientState = document.getElementById('newClientState');
+
+// Modal Novo Agendamento
+const newAppointmentModal = document.getElementById('newAppointmentModal');
+const appointmentClientName = document.getElementById('appointmentClientName');
+const appointmentClientPhone = document.getElementById('appointmentClientPhone');
+const appointmentPhoneContainer = document.getElementById('appointmentPhoneContainer');
+const clientSuggestions = document.getElementById('clientSuggestions');
+const appointmentMassageType = document.getElementById('appointmentMassageType');
+const appointmentPrice = document.getElementById('appointmentPrice');
+const appointmentCalendar = document.getElementById('appointmentCalendar');
+const appointmentTimeSlots = document.getElementById('appointmentTimeSlots');
+const appointmentTimeSlotsSection = document.getElementById('appointmentTimeSlotsSection');
+const appointmentNote = document.getElementById('appointmentNote');
 
 // Elementos Financeiros
 const financeTicketMedio = document.getElementById('financeTicketMedio');
@@ -70,6 +99,15 @@ let customDateStart = null;
 let customDateEnd = null;
 let customFinanceDateStart = null;
 let customFinanceDateEnd = null;
+
+let appointmentSelectedDate = null;
+let appointmentSelectedHour = null;
+let appointmentCurrentMonth = new Date();
+let selectedClientId = null;
+
+// Variáveis para configuração de horários
+let scheduleConfig = null;
+
 
 // ====================
 // FUNÇÕES AUXILIARES
@@ -119,6 +157,10 @@ function maskCpf(cpf) {
   return cpf;
 }
 
+function unmaskCpf(cpf) {
+  return cpf.replace(/\D/g, '');
+}
+
 function maskPhone(phone) {
   if (!phone) return '';
   phone = phone.replace(/\D/g, '');
@@ -132,11 +174,363 @@ function maskPhone(phone) {
   return phone;
 }
 
+function unmaskPhone(phone) {
+  return phone.replace(/\D/g, '');
+}
+
 function maskCep(cep) {
   if (!cep) return '';
   cep = cep.replace(/\D/g, '');
   cep = cep.replace(/(\d{5})(\d)/, '$1-$2');
   return cep;
+}
+
+function unmaskCep(cep) {
+  return cep.replace(/\D/g, '');
+}
+
+function maskDate(value) {
+  value = value.replace(/\D/g, '');
+  value = value.replace(/(\d{2})(\d)/, '$1/$2');
+  value = value.replace(/(\d{2})(\d)/, '$1/$2');
+  return value;
+}
+
+function validateDate(dateStr) {
+  const parts = dateStr.split('/');
+  if (parts.length !== 3) return false;
+  const day = parseInt(parts[0]);
+  const month = parseInt(parts[1]);
+  const year = parseInt(parts[2]);
+  if (year < 1900 || year > new Date().getFullYear()) return false;
+  if (month < 1 || month > 12) return false;
+  const daysInMonth = new Date(year, month, 0).getDate();
+  if (day < 1 || day > daysInMonth) return false;
+  return true;
+}
+
+function validateCpf(cpf) {
+  cpf = unmaskCpf(cpf);
+  if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(cpf.charAt(i)) * (10 - i);
+  let digit = 11 - (sum % 11);
+  if (digit >= 10) digit = 0;
+  if (digit !== parseInt(cpf.charAt(9))) return false;
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += parseInt(cpf.charAt(i)) * (11 - i);
+  digit = 11 - (sum % 11);
+  if (digit >= 10) digit = 0;
+  if (digit !== parseInt(cpf.charAt(10))) return false;
+  return true;
+}
+
+// Aplicar máscaras nos campos do modal de adicionar cliente
+if (document.getElementById('newClientPhone')) {
+  newClientPhone.addEventListener('input', function() { this.value = maskPhone(this.value); });
+  newClientCpf.addEventListener('input', function() { this.value = maskCpf(this.value); });
+  newClientBirthdate.addEventListener('input', function() { this.value = maskDate(this.value); });
+  newClientCep.addEventListener('input', function() { this.value = maskCep(this.value); });
+}
+
+// Aplicar máscaras no modal de agendamento
+if (document.getElementById('appointmentClientPhone')) {
+  appointmentClientPhone.addEventListener('input', function() { this.value = maskPhone(this.value); });
+}
+
+// Configuração padrão de horários
+const DEFAULT_SCHEDULE_CONFIG = {
+  sessionDuration: 60,
+  enabledDays: [1, 2, 3, 4, 5],
+  schedules: {
+    0: { enabled: false, start: '08:00', end: '18:00', intervals: [] },
+    1: { enabled: true, start: '08:00', end: '18:00', intervals: [] },
+    2: { enabled: true, start: '08:00', end: '18:00', intervals: [] },
+    3: { enabled: true, start: '08:00', end: '18:00', intervals: [] },
+    4: { enabled: true, start: '08:00', end: '18:00', intervals: [] },
+    5: { enabled: true, start: '08:00', end: '18:00', intervals: [] },
+    6: { enabled: false, start: '08:00', end: '18:00', intervals: [] }
+  }
+};
+
+function getDayName(dayIndex) {
+  const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+  return days[dayIndex];
+}
+
+async function loadScheduleConfig() {
+  try {
+    const doc = await firebase.firestore().collection('system_config').doc('schedule').get();
+    if (doc.exists) {
+      scheduleConfig = doc.data();
+    } else {
+      scheduleConfig = { ...DEFAULT_SCHEDULE_CONFIG };
+      await firebase.firestore().collection('system_config').doc('schedule').set(scheduleConfig);
+    }
+    renderScheduleConfig();
+  } catch (error) {
+    console.error('Erro ao carregar configuração:', error);
+    scheduleConfig = { ...DEFAULT_SCHEDULE_CONFIG };
+    renderScheduleConfig();
+  }
+}
+
+async function saveScheduleConfig() {
+  try {
+    const sessionDuration = parseInt(document.getElementById('sessionDuration').value);
+    
+    const enabledDays = [];
+    document.querySelectorAll('.day-checkbox:checked').forEach(cb => {
+      enabledDays.push(parseInt(cb.value));
+    });
+    
+    if (enabledDays.length === 0) {
+      alert('Selecione pelo menos um dia de atendimento!');
+      return;
+    }
+    
+    const applyGlobalInterval = document.getElementById('applyIntervalToAll').checked;
+    let globalInterval = null;
+    
+    if (applyGlobalInterval) {
+      const globalStart = document.getElementById('globalIntervalStart').value;
+      const globalEnd = document.getElementById('globalIntervalEnd').value;
+      
+      if (globalStart && globalEnd) {
+        if (globalStart >= globalEnd) {
+          alert('Intervalo global inválido: início deve ser antes do fim!');
+          return;
+        }
+        globalInterval = { start: globalStart, end: globalEnd };
+      }
+    }
+    
+    const schedules = {};
+    for (let i = 0; i < 7; i++) {
+      const enabled = enabledDays.includes(i);
+      const start = document.getElementById(`day${i}Start`)?.value || '08:00';
+      const end = document.getElementById(`day${i}End`)?.value || '18:00';
+      
+      if (enabled && start >= end) {
+        alert(`Horário inválido para ${getDayName(i)}: início deve ser antes do fim!`);
+        return;
+      }
+      
+      let intervals = [];
+      
+      if (applyGlobalInterval && globalInterval && enabled) {
+        intervals = [globalInterval];
+      } else {
+        const intervalContainer = document.getElementById(`day${i}Intervals`);
+        if (intervalContainer) {
+          intervalContainer.querySelectorAll('.interval-item').forEach(item => {
+            const startInput = item.querySelector('.interval-start');
+            const endInput = item.querySelector('.interval-end');
+            if (startInput && endInput && startInput.value && endInput.value) {
+              if (startInput.value >= endInput.value) {
+                alert(`Intervalo inválido para ${getDayName(i)}: início deve ser antes do fim!`);
+                throw new Error('Invalid interval');
+              }
+              intervals.push({
+                start: startInput.value,
+                end: endInput.value
+              });
+            }
+          });
+        }
+      }
+      
+      schedules[i] = { enabled, start, end, intervals };
+    }
+    
+    const newConfig = {
+      sessionDuration,
+      enabledDays,
+      schedules
+    };
+    
+    await firebase.firestore().collection('system_config').doc('schedule').set(newConfig);
+    scheduleConfig = newConfig;
+    
+    document.getElementById('scheduleConfigStatus').textContent = '✅ Configuração salva com sucesso!';
+    setTimeout(() => {
+      document.getElementById('scheduleConfigStatus').textContent = '';
+    }, 3000);
+    
+    if (selectedDate) {
+      await updateDayDetail();
+    }
+    
+  } catch (error) {
+    if (error.message !== 'Invalid interval') {
+      console.error('Erro ao salvar configuração:', error);
+      alert('Erro ao salvar configuração!');
+    }
+  }
+}
+
+function renderScheduleConfig() {
+  if (!scheduleConfig) return;
+  
+  document.getElementById('sessionDuration').value = scheduleConfig.sessionDuration;
+  
+  document.querySelectorAll('.day-checkbox').forEach(cb => {
+    cb.checked = scheduleConfig.enabledDays.includes(parseInt(cb.value));
+  });
+  
+  renderDaySchedules();
+  renderDayIntervals();
+}
+
+function renderDaySchedules() {
+  const container = document.getElementById('dayScheduleContainer');
+  if (!container) return;
+  
+  container.innerHTML = '';
+  
+  for (let i = 0; i < 7; i++) {
+    const daySchedule = scheduleConfig.schedules[i];
+    const enabled = scheduleConfig.enabledDays.includes(i);
+    
+    if (!enabled) continue;
+    
+    const dayDiv = document.createElement('div');
+    dayDiv.className = 'day-schedule-item';
+    dayDiv.innerHTML = `
+      <div class="day-schedule-header">
+        <strong>${getDayName(i)}</strong>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <input type="time" id="day${i}Start" class="input" value="${daySchedule.start}" style="width:140px">
+        <span style="padding:12px">até</span>
+        <input type="time" id="day${i}End" class="input" value="${daySchedule.end}" style="width:140px">
+      </div>
+    `;
+    container.appendChild(dayDiv);
+  }
+}
+
+function renderDayIntervals() {
+  const container = document.getElementById('dayIntervalContainer');
+  if (!container) return;
+  
+  container.innerHTML = '';
+  
+  const applyToAll = document.getElementById('applyIntervalToAll');
+  const globalConfig = document.getElementById('globalIntervalConfig');
+  
+  if (applyToAll && globalConfig) {
+    applyToAll.addEventListener('change', function() {
+      if (this.checked) {
+        globalConfig.classList.remove('hidden');
+        container.classList.add('hidden');
+      } else {
+        globalConfig.classList.add('hidden');
+        container.classList.remove('hidden');
+      }
+    });
+  }
+  
+  for (let i = 0; i < 7; i++) {
+    const daySchedule = scheduleConfig.schedules[i];
+    const enabled = scheduleConfig.enabledDays.includes(i);
+    
+    if (!enabled) continue;
+    
+    const dayDiv = document.createElement('div');
+    dayDiv.className = 'day-interval-section';
+    dayDiv.innerHTML = `
+      <div class="day-interval-header">
+        <strong>${getDayName(i)}</strong>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="addInterval(${i})">
+          <i class="fas fa-plus"></i> Adicionar Intervalo
+        </button>
+      </div>
+      <div id="day${i}Intervals" class="intervals-list"></div>
+    `;
+    container.appendChild(dayDiv);
+    
+    const intervalsList = dayDiv.querySelector('.intervals-list');
+    daySchedule.intervals.forEach((interval, idx) => {
+      const intervalItem = document.createElement('div');
+      intervalItem.className = 'interval-item';
+      intervalItem.innerHTML = `
+        <input type="time" class="input interval-start" value="${interval.start}" style="width:120px">
+        <span style="padding:8px">até</span>
+        <input type="time" class="input interval-end" value="${interval.end}" style="width:120px">
+        <button type="button" class="btn btn-danger btn-sm" onclick="removeIntervalFromDOM(this)">
+          <i class="fas fa-trash"></i>
+        </button>
+      `;
+      intervalsList.appendChild(intervalItem);
+    });
+  }
+}
+
+function addInterval(dayIndex) {
+  const intervalsList = document.getElementById(`day${dayIndex}Intervals`);
+  if (!intervalsList) return;
+  
+  const intervalItem = document.createElement('div');
+  intervalItem.className = 'interval-item';
+  intervalItem.innerHTML = `
+    <input type="time" class="input interval-start" value="12:00" style="width:120px">
+    <span style="padding:8px">até</span>
+    <input type="time" class="input interval-end" value="13:00" style="width:120px">
+    <button type="button" class="btn btn-danger btn-sm" onclick="removeIntervalFromDOM(this)">
+      <i class="fas fa-trash"></i>
+    </button>
+  `;
+  intervalsList.appendChild(intervalItem);
+}
+
+function removeIntervalFromDOM(button) {
+  if (confirm('Remover este intervalo?')) {
+    button.parentElement.remove();
+  }
+}
+
+function generateTimeSlotsForDay(date) {
+  if (!scheduleConfig) return [];
+  
+  const dayOfWeek = date.getDay();
+  const daySchedule = scheduleConfig.schedules[dayOfWeek];
+  
+  if (!daySchedule || !daySchedule.enabled) return [];
+  
+  const slots = [];
+  const sessionDuration = scheduleConfig.sessionDuration;
+  
+  const [startHour, startMin] = daySchedule.start.split(':').map(Number);
+  const [endHour, endMin] = daySchedule.end.split(':').map(Number);
+  
+  let currentMinutes = startHour * 60 + startMin;
+  const endMinutes = endHour * 60 + endMin;
+  
+  while (currentMinutes + sessionDuration <= endMinutes) {
+    const hour = Math.floor(currentMinutes / 60);
+    const minute = currentMinutes % 60;
+    
+    const isInInterval = daySchedule.intervals.some(interval => {
+      const [intStartHour, intStartMin] = interval.start.split(':').map(Number);
+      const [intEndHour, intEndMin] = interval.end.split(':').map(Number);
+      const intStart = intStartHour * 60 + intStartMin;
+      const intEnd = intEndHour * 60 + intEndMin;
+      return currentMinutes >= intStart && currentMinutes < intEnd;
+    });
+    
+    if (!isInInterval) {
+      slots.push({
+        hour,
+        minute,
+        time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+      });
+    }
+    
+    currentMinutes += sessionDuration;
+  }
+  
+  return slots;
 }
 
 // ====================
@@ -257,15 +651,23 @@ sbItems.forEach(item => {
 
 function openTab(tab) {
   tabDashboard.classList.add('hidden');
+  if (tabSchedule) tabSchedule.classList.add('hidden');
   tabTypes.classList.add('hidden');
   tabClients.classList.add('hidden');
   tabAppointments.classList.add('hidden');
   tabFinance.classList.add('hidden');
-  // Adicione esta linha para garantir que a aba de backup seja sempre ocultada ao trocar de tela
   document.getElementById('tab-backup').classList.add('hidden');
 
   if (tab === 'dashboard') tabDashboard.classList.remove('hidden');
+  if (tab === 'schedule' && tabSchedule) {
+    tabSchedule.classList.remove('hidden');
+    loadScheduleConfig();
+  }
   if (tab === 'types') tabTypes.classList.remove('hidden');
+if (tab === 'schedule' && document.getElementById('tab-schedule')) {
+  document.getElementById('tab-schedule').classList.remove('hidden');
+  loadScheduleConfig();
+}
   if (tab === 'clients') {
     tabClients.classList.remove('hidden');
     loadClientsUI();
@@ -279,6 +681,312 @@ function openTab(tab) {
     document.getElementById('tab-backup').classList.remove('hidden');
     document.getElementById('backupStatus').textContent = '';
   }
+}
+
+// ====================
+// GERENCIAMENTO DE CONFIGURAÇÃO DE HORÁRIOS
+// ====================
+
+function getDayName(dayIndex) {
+  const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+  return days[dayIndex];
+}
+
+async function loadScheduleConfig() {
+  try {
+    const doc = await firebase.firestore().collection('system_config').doc('schedule').get();
+    if (doc.exists) {
+      scheduleConfig = doc.data();
+    } else {
+      scheduleConfig = { ...DEFAULT_SCHEDULE_CONFIG };
+      await firebase.firestore().collection('system_config').doc('schedule').set(scheduleConfig);
+    }
+    renderScheduleConfig();
+  } catch (error) {
+    console.error('Erro ao carregar configuração:', error);
+    scheduleConfig = { ...DEFAULT_SCHEDULE_CONFIG };
+    renderScheduleConfig();
+  }
+}
+
+async function saveScheduleConfig() {
+  try {
+    // Coletar duração da sessão
+    const sessionDuration = parseInt(document.getElementById('sessionDuration').value);
+    
+    // Coletar dias habilitados
+    const enabledDays = [];
+    document.querySelectorAll('.day-checkbox:checked').forEach(cb => {
+      enabledDays.push(parseInt(cb.value));
+    });
+    
+    if (enabledDays.length === 0) {
+      alert('Selecione pelo menos um dia de atendimento!');
+      return;
+    }
+    
+    // Verificar se deve aplicar intervalo global
+    const applyGlobalInterval = document.getElementById('applyIntervalToAll').checked;
+    let globalInterval = null;
+    
+    if (applyGlobalInterval) {
+      const globalStart = document.getElementById('globalIntervalStart').value;
+      const globalEnd = document.getElementById('globalIntervalEnd').value;
+      
+      if (globalStart && globalEnd) {
+        if (globalStart >= globalEnd) {
+          alert('Intervalo global inválido: início deve ser antes do fim!');
+          return;
+        }
+        globalInterval = { start: globalStart, end: globalEnd };
+      }
+    }
+    
+    // Coletar horários por dia
+    const schedules = {};
+    for (let i = 0; i < 7; i++) {
+      const enabled = enabledDays.includes(i);
+      const start = document.getElementById(`day${i}Start`)?.value || '08:00';
+      const end = document.getElementById(`day${i}End`)?.value || '18:00';
+      
+      // Validar horários
+      if (enabled && start >= end) {
+        alert(`Horário inválido para ${getDayName(i)}: início deve ser antes do fim!`);
+        return;
+      }
+      
+      // Coletar intervalos
+      let intervals = [];
+      
+      if (applyGlobalInterval && globalInterval && enabled) {
+        intervals = [globalInterval];
+      } else {
+        const intervalContainer = document.getElementById(`day${i}Intervals`);
+        if (intervalContainer) {
+          intervalContainer.querySelectorAll('.interval-item').forEach(item => {
+            const startInput = item.querySelector('.interval-start');
+            const endInput = item.querySelector('.interval-end');
+            if (startInput && endInput && startInput.value && endInput.value) {
+              if (startInput.value >= endInput.value) {
+                alert(`Intervalo inválido para ${getDayName(i)}: início deve ser antes do fim!`);
+                throw new Error('Invalid interval');
+              }
+              intervals.push({
+                start: startInput.value,
+                end: endInput.value
+              });
+            }
+          });
+        }
+      }
+      
+      schedules[i] = {
+        enabled,
+        start,
+        end,
+        intervals
+      };
+    }
+    
+    const newConfig = {
+      sessionDuration,
+      enabledDays,
+      schedules
+    };
+    
+    await firebase.firestore().collection('system_config').doc('schedule').set(newConfig);
+    scheduleConfig = newConfig;
+    
+    document.getElementById('scheduleConfigStatus').textContent = '✅ Configuração salva com sucesso!';
+    setTimeout(() => {
+      document.getElementById('scheduleConfigStatus').textContent = '';
+    }, 3000);
+    
+    // Atualizar visualização se estiver no dashboard
+    if (selectedDate) {
+      await updateDayDetail();
+    }
+    
+  } catch (error) {
+    if (error.message !== 'Invalid interval') {
+      console.error('Erro ao salvar configuração:', error);
+      alert('Erro ao salvar configuração!');
+    }
+  }
+}
+
+function renderScheduleConfig() {
+  if (!scheduleConfig) return;
+  
+  // Renderizar duração
+  document.getElementById('sessionDuration').value = scheduleConfig.sessionDuration;
+  
+  // Renderizar dias habilitados
+  document.querySelectorAll('.day-checkbox').forEach(cb => {
+    cb.checked = scheduleConfig.enabledDays.includes(parseInt(cb.value));
+  });
+  
+  // Renderizar horários por dia
+  renderDaySchedules();
+  
+  // Renderizar intervalos
+  renderDayIntervals();
+}
+
+function renderDaySchedules() {
+  const container = document.getElementById('dayScheduleContainer');
+  if (!container) return;
+  
+  container.innerHTML = '';
+  
+  for (let i = 0; i < 7; i++) {
+    const daySchedule = scheduleConfig.schedules[i];
+    const enabled = scheduleConfig.enabledDays.includes(i);
+    
+    if (!enabled) continue;
+    
+    const dayDiv = document.createElement('div');
+    dayDiv.className = 'day-schedule-item';
+    dayDiv.innerHTML = `
+      <div class="day-schedule-header">
+        <strong>${getDayName(i)}</strong>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <input type="time" id="day${i}Start" class="input" value="${daySchedule.start}" style="width:140px">
+        <span style="padding:12px">até</span>
+        <input type="time" id="day${i}End" class="input" value="${daySchedule.end}" style="width:140px">
+      </div>
+    `;
+    container.appendChild(dayDiv);
+  }
+}
+
+function renderDayIntervals() {
+  const container = document.getElementById('dayIntervalContainer');
+  if (!container) return;
+  
+  container.innerHTML = '';
+  
+  // Checkbox de aplicar intervalo global
+  const applyToAll = document.getElementById('applyIntervalToAll');
+  const globalConfig = document.getElementById('globalIntervalConfig');
+  
+  if (applyToAll && globalConfig) {
+    applyToAll.addEventListener('change', function() {
+      if (this.checked) {
+        globalConfig.classList.remove('hidden');
+        container.classList.add('hidden');
+      } else {
+        globalConfig.classList.add('hidden');
+        container.classList.remove('hidden');
+      }
+    });
+  }
+  
+  // Renderizar intervalos por dia
+  for (let i = 0; i < 7; i++) {
+    const daySchedule = scheduleConfig.schedules[i];
+    const enabled = scheduleConfig.enabledDays.includes(i);
+    
+    if (!enabled) continue;
+    
+    const dayDiv = document.createElement('div');
+    dayDiv.className = 'day-interval-section';
+    dayDiv.innerHTML = `
+      <div class="day-interval-header">
+        <strong>${getDayName(i)}</strong>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="addInterval(${i})">
+          <i class="fas fa-plus"></i> Adicionar Intervalo
+        </button>
+      </div>
+      <div id="day${i}Intervals" class="intervals-list"></div>
+    `;
+    container.appendChild(dayDiv);
+    
+    // Renderizar intervalos existentes
+    const intervalsList = dayDiv.querySelector('.intervals-list');
+    daySchedule.intervals.forEach((interval, idx) => {
+      const intervalItem = document.createElement('div');
+      intervalItem.className = 'interval-item';
+      intervalItem.innerHTML = `
+        <input type="time" class="input interval-start" value="${interval.start}" style="width:120px">
+        <span style="padding:8px">até</span>
+        <input type="time" class="input interval-end" value="${interval.end}" style="width:120px">
+        <button type="button" class="btn btn-danger btn-sm" onclick="removeIntervalFromDOM(this)">
+          <i class="fas fa-trash"></i>
+        </button>
+      `;
+      intervalsList.appendChild(intervalItem);
+    });
+  }
+}
+
+function addInterval(dayIndex) {
+  const intervalsList = document.getElementById(`day${dayIndex}Intervals`);
+  if (!intervalsList) return;
+  
+  const intervalItem = document.createElement('div');
+  intervalItem.className = 'interval-item';
+  intervalItem.innerHTML = `
+    <input type="time" class="input interval-start" value="12:00" style="width:120px">
+    <span style="padding:8px">até</span>
+    <input type="time" class="input interval-end" value="13:00" style="width:120px">
+    <button type="button" class="btn btn-danger btn-sm" onclick="removeIntervalFromDOM(this)">
+      <i class="fas fa-trash"></i>
+    </button>
+  `;
+  intervalsList.appendChild(intervalItem);
+}
+
+function removeIntervalFromDOM(button) {
+  if (confirm('Remover este intervalo?')) {
+    button.parentElement.remove();
+  }
+}
+
+function generateTimeSlotsForDay(date) {
+  if (!scheduleConfig) return [];
+  
+  const dayOfWeek = date.getDay();
+  const daySchedule = scheduleConfig.schedules[dayOfWeek];
+  
+  if (!daySchedule || !daySchedule.enabled) return [];
+  
+  const slots = [];
+  const sessionDuration = scheduleConfig.sessionDuration;
+  
+  // Converter horários para minutos
+  const [startHour, startMin] = daySchedule.start.split(':').map(Number);
+  const [endHour, endMin] = daySchedule.end.split(':').map(Number);
+  
+  let currentMinutes = startHour * 60 + startMin;
+  const endMinutes = endHour * 60 + endMin;
+  
+  while (currentMinutes + sessionDuration <= endMinutes) {
+    const hour = Math.floor(currentMinutes / 60);
+    const minute = currentMinutes % 60;
+    
+    // Verificar se está em algum intervalo
+    const isInInterval = daySchedule.intervals.some(interval => {
+      const [intStartHour, intStartMin] = interval.start.split(':').map(Number);
+      const [intEndHour, intEndMin] = interval.end.split(':').map(Number);
+      const intStart = intStartHour * 60 + intStartMin;
+      const intEnd = intEndHour * 60 + intEndMin;
+      return currentMinutes >= intStart && currentMinutes < intEnd;
+    });
+    
+    if (!isInInterval) {
+      slots.push({
+        hour,
+        minute,
+        time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+      });
+    }
+    
+    currentMinutes += sessionDuration;
+  }
+  
+  return slots;
 }
 
 // ====================
@@ -522,6 +1230,125 @@ function closeClientModal(event) {
 clientSearchInput.addEventListener('input', () => {
   loadClientsUI();
 });
+
+function openAddClientModal() {
+  newClientName.value = '';
+  newClientPhone.value = '';
+  newClientCpf.value = '';
+  newClientBirthdate.value = '';
+  newClientEmail.value = '';
+  newClientCep.value = '';
+  newClientStreet.value = '';
+  newClientNumber.value = '';
+  newClientComplement.value = '';
+  newClientNeighborhood.value = '';
+  newClientCity.value = '';
+  newClientState.value = '';
+  
+  addClientModal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  newClientName.focus();
+}
+
+function closeAddClientModal(event) {
+  if (event && event.target !== addClientModal) return;
+  addClientModal.classList.add('hidden');
+  document.body.style.overflow = 'auto';
+}
+
+async function searchCepNewClient() {
+  const cep = unmaskCep(newClientCep.value);
+  if (cep.length !== 8) {
+    alert('CEP inválido. Digite um CEP com 8 dígitos.');
+    return;
+  }
+  
+  try {
+    const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const data = await response.json();
+    if (data.erro) {
+      alert('CEP não encontrado.');
+      return;
+    }
+    newClientStreet.value = data.logradouro || '';
+    newClientNeighborhood.value = data.bairro || '';
+    newClientCity.value = data.localidade || '';
+    newClientState.value = data.uf || '';
+    newClientNumber.focus();
+  } catch (error) {
+    console.error('Erro ao buscar CEP:', error);
+    alert('Erro ao buscar CEP. Tente novamente.');
+  }
+}
+
+async function saveNewClient() {
+  const name = newClientName.value.trim();
+  const phone = newClientPhone.value.trim();
+  
+  if (!name) {
+    alert('Nome é obrigatório');
+    newClientName.focus();
+    return;
+  }
+  
+  if (!phone) {
+    alert('Telefone é obrigatório');
+    newClientPhone.focus();
+    return;
+  }
+  
+  const phoneNumbers = unmaskPhone(phone);
+  if (phoneNumbers.length < 10) {
+    alert('Telefone inválido. Digite um número completo com DDD.');
+    newClientPhone.focus();
+    return;
+  }
+  
+  const cpf = newClientCpf.value.trim();
+  if (cpf && !validateCpf(cpf)) {
+    alert('CPF inválido. Verifique e tente novamente.');
+    newClientCpf.focus();
+    return;
+  }
+  
+  const birthdate = newClientBirthdate.value.trim();
+  if (birthdate && !validateDate(birthdate)) {
+    alert('Data de nascimento inválida.');
+    newClientBirthdate.focus();
+    return;
+  }
+  
+  try {
+    const userId = uid();
+    const clientData = {
+      userId,
+      name,
+      phone,
+      email: newClientEmail.value.trim() || '',
+      cpf: cpf ? unmaskCpf(cpf) : '',
+      birthdate: birthdate || '',
+      address: {
+        cep: newClientCep.value.trim() ? unmaskCep(newClientCep.value) : '',
+        street: newClientStreet.value.trim() || '',
+        number: newClientNumber.value.trim() || '',
+        complement: newClientComplement.value.trim() || '',
+        neighborhood: newClientNeighborhood.value.trim() || '',
+        city: newClientCity.value.trim() || '',
+        state: newClientState.value.trim().toUpperCase() || ''
+      },
+      createdAt: Date.now()
+    };
+    
+    await firebase.firestore().collection('users').doc(userId).set(clientData);
+    
+    alert('✅ Cliente cadastrado com sucesso!');
+    closeAddClientModal();
+    loadClientsUI();
+  } catch (error) {
+    console.error('Erro ao salvar cliente:', error);
+    alert('Erro ao cadastrar cliente. Tente novamente.');
+  }
+}
 
 // ====================
 // TIPOS DE MASSAGEM
@@ -841,7 +1668,6 @@ async function loadAppointmentsUI() {
       const left = document.createElement('div');
       left.style.flex = '1';
       
-      // Buscar dados do cliente
       const client = allClients[ap.userId];
       const clientAge = client ? calculateAge(client.birthdate) : '';
       const ageDisplay = clientAge && clientAge !== 'N/A' ? ` (${clientAge} anos)` : '';
@@ -935,6 +1761,407 @@ async function loadAppointmentsUI() {
     });
   } catch (error) {
     console.error('Erro ao carregar agendamentos:', error);
+  }
+}
+
+function getStatusColor(status) {
+  const colors = {
+    'PENDENTE': '#fef3c7',
+    'CONFIRMADO': '#d1fae5',
+    'REALIZADO': '#dbeafe',
+    'CANCELADO': '#fee2e2'
+  };
+  return colors[status] || '#f5f5f5';
+}
+
+function getStatusTextColor(status) {
+  const colors = {
+    'PENDENTE': '#92400e',
+    'CONFIRMADO': '#065f46',
+    'REALIZADO': '#1e40af',
+    'CANCELADO': '#991b1b'
+  };
+  return colors[status] || '#000000';
+}
+
+function openNewAppointmentModal() {
+  // Limpar campos
+  appointmentClientName.value = '';
+  appointmentClientPhone.value = '';
+  appointmentPhoneContainer.classList.add('hidden');
+  clientSuggestions.classList.add('hidden');
+  appointmentMassageType.value = '';
+  appointmentPrice.textContent = 'R$ 0,00';
+  appointmentNote.value = '';
+  appointmentSelectedDate = null;
+  appointmentSelectedHour = null;
+  selectedClientId = null;
+  appointmentTimeSlotsSection.classList.add('hidden');
+  
+  // Carregar tipos de massagem
+  loadAppointmentTypes();
+  
+  // Renderizar calendário
+  appointmentCurrentMonth = new Date();
+  renderAppointmentCalendar();
+  
+  newAppointmentModal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  appointmentClientName.focus();
+}
+
+function closeNewAppointmentModal(event) {
+  if (event && event.target !== newAppointmentModal) return;
+  newAppointmentModal.classList.add('hidden');
+  document.body.style.overflow = 'auto';
+}
+
+// Autocompletar cliente
+appointmentClientName.addEventListener('input', function() {
+  const searchTerm = this.value.trim().toLowerCase();
+  
+  if (searchTerm.length < 2) {
+    clientSuggestions.classList.add('hidden');
+    appointmentPhoneContainer.classList.add('hidden');
+    selectedClientId = null;
+    return;
+  }
+  
+  const matches = Object.values(allClients).filter(c =>
+    c.name.toLowerCase().includes(searchTerm)
+  ).slice(0, 5);
+  
+  if (matches.length > 0) {
+    clientSuggestions.innerHTML = '';
+    matches.forEach(client => {
+      const item = document.createElement('div');
+      item.className = 'suggestion-item';
+      item.innerHTML = `
+        <div style="font-weight:700">${client.name}</div>
+        <div class="small">${maskPhone(client.phone)}</div>
+      `;
+      item.onclick = () => {
+        appointmentClientName.value = client.name;
+        selectedClientId = client.userId;
+        appointmentClientPhone.value = client.phone;
+        clientSuggestions.classList.add('hidden');
+        appointmentPhoneContainer.classList.add('hidden');
+      };
+      clientSuggestions.appendChild(item);
+    });
+    clientSuggestions.classList.remove('hidden');
+    appointmentPhoneContainer.classList.add('hidden');
+  } else {
+    clientSuggestions.classList.add('hidden');
+    appointmentPhoneContainer.classList.remove('hidden');
+    selectedClientId = null;
+  }
+});
+
+// Fechar sugestões ao clicar fora
+document.addEventListener('click', function(e) {
+  if (!appointmentClientName.contains(e.target) && !clientSuggestions.contains(e.target)) {
+    clientSuggestions.classList.add('hidden');
+  }
+});
+
+function loadAppointmentTypes() {
+  appointmentMassageType.innerHTML = '<option value="">Selecione o tipo</option>';
+  allTypes.sort((a, b) => a.name.localeCompare(b.name));
+  allTypes.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = t.name;
+    opt.dataset.price = t.price;
+    appointmentMassageType.appendChild(opt);
+  });
+}
+
+appointmentMassageType.addEventListener('change', function() {
+  const sel = this.value;
+  if (!sel) {
+    appointmentPrice.textContent = 'R$ 0,00';
+    return;
+  }
+  const opt = this.querySelector(`option[value="${sel}"]`);
+  const price = opt ? opt.dataset.price || 0 : 0;
+  appointmentPrice.textContent = formatMoney(price || 0);
+});
+
+function renderAppointmentCalendar() {
+  appointmentCalendar.innerHTML = '';
+  
+  const header = document.createElement('div');
+  header.className = 'calendar-header';
+  
+  const btnPrev = document.createElement('button');
+  btnPrev.className = 'btn-nav';
+  btnPrev.innerHTML = '◀';
+  btnPrev.onclick = () => {
+    appointmentCurrentMonth.setMonth(appointmentCurrentMonth.getMonth() - 1);
+    renderAppointmentCalendar();
+  };
+  
+  const monthTitle = document.createElement('div');
+  monthTitle.className = 'month-title';
+  monthTitle.textContent = appointmentCurrentMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  
+  const btnNext = document.createElement('button');
+  btnNext.className = 'btn-nav';
+  btnNext.innerHTML = '▶';
+  btnNext.onclick = () => {
+    appointmentCurrentMonth.setMonth(appointmentCurrentMonth.getMonth() + 1);
+    renderAppointmentCalendar();
+  };
+  
+  header.appendChild(btnPrev);
+  header.appendChild(monthTitle);
+  header.appendChild(btnNext);
+  appointmentCalendar.appendChild(header);
+  
+  const weekDays = document.createElement('div');
+  weekDays.className = 'weekdays-header';
+  ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].forEach(day => {
+    const dayEl = document.createElement('div');
+    dayEl.className = 'weekday-label';
+    dayEl.textContent = day;
+    weekDays.appendChild(dayEl);
+  });
+  appointmentCalendar.appendChild(weekDays);
+  
+  const daysGrid = document.createElement('div');
+  daysGrid.className = 'calendar-grid';
+  
+  const firstDay = new Date(appointmentCurrentMonth.getFullYear(), appointmentCurrentMonth.getMonth(), 1);
+  const lastDay = new Date(appointmentCurrentMonth.getFullYear(), appointmentCurrentMonth.getMonth() + 1, 0);
+  const firstWeekDay = firstDay.getDay();
+  const daysInMonth = lastDay.getDate();
+  
+  for (let i = 0; i < firstWeekDay; i++) {
+    const emptyCell = document.createElement('div');
+    emptyCell.className = 'calendar-day empty';
+    daysGrid.appendChild(emptyCell);
+  }
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dayDate = new Date(appointmentCurrentMonth.getFullYear(), appointmentCurrentMonth.getMonth(), day);
+    dayDate.setHours(0, 0, 0, 0);
+    
+    const dayCell = document.createElement('div');
+    dayCell.className = 'calendar-day';
+    
+    if (dayDate < today) {
+      dayCell.classList.add('past');
+      dayCell.textContent = day;
+    } else {
+      dayCell.classList.add('available');
+      dayCell.textContent = day;
+      if (dayDate.getTime() === today.getTime()) dayCell.classList.add('today');
+      if (appointmentSelectedDate && dayDate.getTime() === appointmentSelectedDate.getTime()) {
+        dayCell.classList.add('selected');
+      }
+      dayCell.onclick = () => selectAppointmentDate(dayDate);
+    }
+    
+    daysGrid.appendChild(dayCell);
+  }
+  
+  appointmentCalendar.appendChild(daysGrid);
+}
+
+async function selectAppointmentDate(date) {
+  appointmentSelectedDate = new Date(date);
+  appointmentSelectedDate.setHours(0, 0, 0, 0);
+  appointmentSelectedHour = null;
+  renderAppointmentCalendar();
+  await loadAppointmentTimeSlots();
+}
+
+async function loadAppointmentTimeSlots() {
+  if (!appointmentSelectedDate) {
+    appointmentTimeSlotsSection.classList.add('hidden');
+    return;
+  }
+  
+  appointmentTimeSlotsSection.classList.remove('hidden');
+  appointmentTimeSlots.innerHTML = '<div class="loading">Carregando horários...</div>';
+  
+  try {
+    const dateStr = toDateStr(appointmentSelectedDate);
+    const dayAvailability = await getDayAvailability(dateStr);
+    const dayAppointments = allAppointments.filter(ap => {
+      const apDate = new Date(ap.start);
+      return apDate.toDateString() === appointmentSelectedDate.toDateString();
+    });
+    
+    appointmentTimeSlots.innerHTML = '';
+    const now = new Date();
+    const isToday = appointmentSelectedDate.toDateString() === now.toDateString();
+    const currentHour = now.getHours();
+    let hasAvailableSlots = false;
+    
+    for (let hour = 8; hour <= 22; hour++) {
+      const slotDate = new Date(appointmentSelectedDate);
+      slotDate.setHours(hour, 0, 0, 0);
+      
+      if (isToday && hour <= currentHour) continue;
+      if (dayAvailability[hour] === false) continue;
+      
+      const isBooked = dayAppointments.some(ap => {
+        const apDate = new Date(ap.start);
+        return apDate.getHours() === hour;
+      });
+      if (isBooked) continue;
+      
+      hasAvailableSlots = true;
+      const slot = document.createElement('div');
+      slot.className = 'time-slot';
+      if (appointmentSelectedHour === hour) slot.classList.add('selected');
+      
+      const timeLabel = document.createElement('div');
+      timeLabel.className = 'time-label';
+      timeLabel.textContent = `${hour.toString().padStart(2, '0')}:00`;
+      
+      const statusLabel = document.createElement('div');
+      statusLabel.className = 'status-label available';
+      statusLabel.textContent = 'Disponível';
+      
+      slot.appendChild(timeLabel);
+      slot.appendChild(statusLabel);
+      slot.onclick = () => selectAppointmentTimeSlot(hour, slot);
+      appointmentTimeSlots.appendChild(slot);
+    }
+    
+    if (!hasAvailableSlots) {
+      appointmentTimeSlots.innerHTML = '<div class="no-slots">Nenhum horário disponível neste dia</div>';
+    }
+  } catch (error) {
+    console.error('Erro ao carregar horários:', error);
+    appointmentTimeSlots.innerHTML = '<div class="error">Erro ao carregar horários</div>';
+  }
+}
+
+function selectAppointmentTimeSlot(hour, slotElement) {
+  appointmentSelectedHour = hour;
+  document.querySelectorAll('#appointmentTimeSlots .time-slot').forEach(slot => {
+    slot.classList.remove('selected');
+  });
+  slotElement.classList.add('selected');
+}
+
+async function saveNewAppointment() {
+  const clientName = appointmentClientName.value.trim();
+  const clientPhone = appointmentClientPhone.value.trim();
+  const typeId = appointmentMassageType.value;
+  
+  if (!clientName) {
+    alert('Por favor, preencha o nome do cliente.');
+    appointmentClientName.focus();
+    return;
+  }
+  
+  // Se não selecionou um cliente existente, verificar telefone
+  if (!selectedClientId) {
+    if (!clientPhone) {
+      alert('Por favor, preencha o telefone do cliente.');
+      appointmentClientPhone.focus();
+      return;
+    }
+    const phoneNumbers = unmaskPhone(clientPhone);
+    if (phoneNumbers.length < 10) {
+      alert('Telefone inválido. Digite um número completo com DDD.');
+      appointmentClientPhone.focus();
+      return;
+    }
+  }
+  
+  if (!typeId) {
+    alert('Por favor, selecione o tipo de massagem.');
+    appointmentMassageType.focus();
+    return;
+  }
+  
+  if (!appointmentSelectedDate) {
+    alert('Por favor, selecione uma data.');
+    return;
+  }
+  
+  if (appointmentSelectedHour === null) {
+    alert('Por favor, selecione um horário.');
+    return;
+  }
+  
+  const type = allTypes.find(t => t.id === typeId);
+  if (!type) {
+    alert('Tipo inválido. Por favor, recarregue a página.');
+    return;
+  }
+  
+  try {
+    let finalClientId = selectedClientId;
+    let finalClientPhone = clientPhone;
+    
+    // Se não selecionou um cliente existente, cadastrar
+    if (!selectedClientId) {
+      finalClientId = uid();
+      const newClientData = {
+        userId: finalClientId,
+        name: clientName,
+        phone: clientPhone,
+        email: '',
+        cpf: '',
+        birthdate: '',
+        address: {
+          cep: '',
+          street: '',
+          number: '',
+          complement: '',
+          neighborhood: '',
+          city: '',
+          state: ''
+        },
+        createdAt: Date.now()
+      };
+      
+      await firebase.firestore().collection('users').doc(finalClientId).set(newClientData);
+      console.log('✅ Novo cliente cadastrado:', clientName);
+    } else {
+      // Cliente existente - pegar telefone
+      const client = allClients[selectedClientId];
+      finalClientPhone = client.phone;
+    }
+    
+    const startTs = new Date(appointmentSelectedDate);
+    startTs.setHours(appointmentSelectedHour, 0, 0, 0);
+    const endTs = startTs.getTime() + 60 * 60 * 1000;
+    
+    const appointment = {
+      id: uid(),
+      userId: finalClientId,
+      clientName: clientName,
+      clientPhone: finalClientPhone,
+      typeId: type.id,
+      typeName: type.name,
+      price: Number(type.price),
+      start: startTs.getTime(),
+      end: endTs,
+      note: appointmentNote.value.trim() || '',
+      status: 'PENDENTE',
+      paid: false,
+      createdAt: Date.now()
+    };
+    
+    await saveAppointment(appointment);
+    
+    alert('🎉 Agendamento realizado com sucesso!');
+    closeNewAppointmentModal();
+    loadAppointmentsUI();
+  } catch (error) {
+    console.error('Erro ao salvar agendamento:', error);
+    alert('Erro ao realizar agendamento. Tente novamente.');
   }
 }
 
@@ -1299,12 +2526,121 @@ async function updateDayDetail() {
   selectedDayTitle.textContent = selectedDate.toLocaleDateString('pt-BR', {weekday:'long', day:'2-digit', month:'long', year:'numeric'});
   selectedDaySub.textContent = '';
   
-  const dateStr = toDateStr(selectedDate);
-  currentDayAvailability = await getDayAvailability(dateStr);
-  
-  // Limpa a lista APÓS a operação assíncrona para evitar condição de corrida
-  // onde múltiplos chamados podem adicionar conteúdo duplicado
   hourlyList.innerHTML = '';
+
+  const slots = generateTimeSlotsForDay(selectedDate);
+  
+  if (slots.length === 0) {
+    hourlyList.innerHTML = '<div class="small" style="text-align:center;padding:24px">Nenhum horário configurado para este dia</div>';
+    return;
+  }
+  
+  const dayAppointments = allAppointments.filter(a => {
+    const d = new Date(a.start);
+    return d.toDateString() === selectedDate.toDateString();
+  });
+  
+  slots.forEach(slot => {
+    const row = document.createElement('div');
+    row.className = 'hour-row';
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    row.style.gap = '10px';
+    
+    const time = document.createElement('div');
+    time.className = 'hour-time';
+    time.textContent = slot.time;
+    
+    const slotDiv = document.createElement('div');
+    slotDiv.className = 'hour-slot card';
+    slotDiv.style.flex = '1';
+    
+    const slotDate = new Date(selectedDate);
+    slotDate.setHours(slot.hour, slot.minute, 0, 0);
+    
+    const appt = dayAppointments.find(a => {
+      const d = new Date(a.start);
+      return d.getHours() === slot.hour && d.getMinutes() === slot.minute;
+    });
+    
+    if (appt) {
+      const booked = document.createElement('div');
+      booked.className = 'slot-booked';
+      booked.style.display = 'flex';
+      booked.style.justifyContent = 'space-between';
+      booked.style.alignItems = 'center';
+      booked.style.gap = '12px';
+      
+      const leftInfo = document.createElement('div');
+      leftInfo.style.flex = '1';
+      leftInfo.style.minWidth = '0';
+      
+      const client = allClients[appt.userId];
+      const clientAge = client ? calculateAge(client.birthdate) : '';
+      const ageDisplay = clientAge && clientAge !== 'N/A' ? ` (${clientAge} anos)` : '';
+      
+      const clientNameHTML = `<span class="clickable-client-name" onclick="openClientDetail('${appt.userId}')" title="Ver detalhes do cliente">${appt.clientName}${ageDisplay}</span>`;
+      
+      leftInfo.innerHTML = `
+        <div style="font-weight:700;margin-bottom:4px">${appt.typeName}</div>
+        <div class="small">${clientNameHTML}${appt.clientPhone ? ' • ' + appt.clientPhone : ''}</div>
+      `;
+      
+      const statusSelect = document.createElement('select');
+      statusSelect.className = 'status-select-compact';
+      statusSelect.style.background = getStatusColor(appt.status);
+      statusSelect.style.color = getStatusTextColor(appt.status);
+      statusSelect.innerHTML = `
+        <option value="PENDENTE" ${appt.status === 'PENDENTE' ? 'selected' : ''}>⏳ Pendente</option>
+        <option value="CONFIRMADO" ${appt.status === 'CONFIRMADO' ? 'selected' : ''}>✓ Confirmado</option>
+        <option value="REALIZADO" ${appt.status === 'REALIZADO' ? 'selected' : ''}>✓ Realizado</option>
+        <option value="CANCELADO" ${appt.status === 'CANCELADO' ? 'selected' : ''}>✗ Cancelado</option>
+      `;
+      statusSelect.onchange = async () => {
+        const newStatus = statusSelect.value;
+        if (newStatus === 'CANCELADO' && appt.status !== 'CANCELADO') {
+          const reason = prompt('Informe o motivo do cancelamento (obrigatório):');
+          if (reason && reason.trim()) {
+            appt.status = newStatus;
+            appt.cancellationReason = reason.trim();
+            try {
+              await saveAppointment(appt);
+              await updateDayDetail();
+            } catch (error) {
+              console.error('Erro ao atualizar status:', error);
+              alert('Erro ao atualizar status.');
+            }
+          } else if (reason !== null) {
+            alert('O motivo do cancelamento é obrigatório!');
+            statusSelect.value = appt.status;
+          } else {
+            statusSelect.value = appt.status;
+          }
+        } else {
+          appt.status = newStatus;
+          try {
+            await saveAppointment(appt);
+            await updateDayDetail();
+          } catch (error) {
+            console.error('Erro ao atualizar status:', error);
+            alert('Erro ao atualizar status.');
+          }
+        }
+      };
+      
+      booked.appendChild(leftInfo);
+      booked.appendChild(statusSelect);
+      slotDiv.appendChild(booked);
+    } else {
+      slotDiv.innerHTML = '<div class="slot-empty">Livre</div>';
+    }
+    
+    row.appendChild(time);
+    row.appendChild(slotDiv);
+    hourlyList.appendChild(row);
+  });
+}
+
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -1503,7 +2839,7 @@ async function updateDayDetail() {
     row.appendChild(slot);
     hourlyList.appendChild(row);
   }
-}
+
 
 viewMode.addEventListener('change', () => {
   if (viewMode.value === 'week') {
@@ -1616,6 +2952,10 @@ if (btnExportBackup && inputRestoreBackup) {
     }
   });
 }
+
+// ====================
+// AGENDAMENTO DE BACKUP AUTOMÁTICO
+// ====================
 
 function getSavedBackupSchedule() {
   try {
@@ -1824,6 +3164,7 @@ async function init() {
     console.log('✅ Clientes carregados:', Object.keys(allClients).length);
     
     loadTypesUI();
+await loadScheduleConfig();
     renderCalendar();
     
     setupPeriodFilters();
@@ -1909,5 +3250,3 @@ window.addEventListener('beforeunload', () => {
   if (unsubscribeAppointments) unsubscribeAppointments();
   if (unsubscribeUsers) unsubscribeUsers();
 });
-
-
