@@ -64,6 +64,7 @@
           <div class="sb-item" data-tab="clients">Clientes</div>
           <div class="sb-item" data-tab="appointments">Agendamentos</div>
           <div class="sb-item" data-tab="finance">Controle Financeiro</div>
+          <div class="sb-item" data-tab="schedule">Horários de Atendimento</div>
           <div class="sb-item" data-tab="backup">Backup</div>
         </nav>
 
@@ -110,6 +111,99 @@
           </div>
         </section>
 
+ <!-- NOVA ABA DE HORÁRIOS -->
+        <section class="card hidden" id="tab-schedule">
+          <h3><i class="fas fa-clock"></i> Configuração de Horários</h3>
+          <div class="small">Configure seus dias e horários de atendimento</div>
+
+          <div class="schedule-config-container">
+            <!-- Duração da Sessão -->
+            <div class="config-section">
+              <h4><i class="fas fa-hourglass-half"></i> Duração da Sessão</h4>
+              <div class="row">
+                <select id="sessionDuration" class="input" style="max-width:200px">
+                  <option value="30">30 minutos</option>
+                  <option value="45">45 minutos</option>
+                  <option value="60" selected>60 minutos</option>
+                  <option value="90">90 minutos</option>
+                  <option value="120">120 minutos</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Dias da Semana -->
+            <div class="config-section">
+              <h4><i class="fas fa-calendar-week"></i> Dias de Atendimento</h4>
+              <div class="weekdays-config">
+                <label class="weekday-checkbox">
+                  <input type="checkbox" value="0" class="day-checkbox">
+                  <span>Domingo</span>
+                </label>
+                <label class="weekday-checkbox">
+                  <input type="checkbox" value="1" class="day-checkbox" checked>
+                  <span>Segunda</span>
+                </label>
+                <label class="weekday-checkbox">
+                  <input type="checkbox" value="2" class="day-checkbox" checked>
+                  <span>Terça</span>
+                </label>
+                <label class="weekday-checkbox">
+                  <input type="checkbox" value="3" class="day-checkbox" checked>
+                  <span>Quarta</span>
+                </label>
+                <label class="weekday-checkbox">
+                  <input type="checkbox" value="4" class="day-checkbox" checked>
+                  <span>Quinta</span>
+                </label>
+                <label class="weekday-checkbox">
+                  <input type="checkbox" value="5" class="day-checkbox" checked>
+                  <span>Sexta</span>
+                </label>
+                <label class="weekday-checkbox">
+                  <input type="checkbox" value="6" class="day-checkbox">
+                  <span>Sábado</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Horários por Dia -->
+            <div class="config-section">
+              <h4><i class="fas fa-clock"></i> Horários de Atendimento</h4>
+              <div id="dayScheduleContainer"></div>
+            </div>
+
+            <!-- Intervalos -->
+            <div class="config-section">
+              <h4><i class="fas fa-coffee"></i> Intervalos</h4>
+              <div class="interval-global">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="applyIntervalToAll">
+                  <span>Aplicar o mesmo intervalo para todos os dias</span>
+                </label>
+                <div id="globalIntervalConfig" class="hidden" style="margin-top:12px">
+                  <div class="row">
+                    <input type="time" id="globalIntervalStart" class="input" style="width:140px">
+                    <span style="padding:12px">até</span>
+                    <input type="time" id="globalIntervalEnd" class="input" style="width:140px">
+                  </div>
+                </div>
+              </div>
+              <div id="dayIntervalContainer" style="margin-top:16px"></div>
+            </div>
+
+            <div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap">
+              <button class="btn btn-primary" onclick="saveScheduleConfig()">
+                <i class="fas fa-save"></i> Salvar Configuração
+              </button>
+              <button class="btn btn-ghost" onclick="loadScheduleConfig()">
+                <i class="fas fa-sync-alt"></i> Recarregar
+              </button>
+            </div>
+
+            <div id="scheduleConfigStatus" class="small" style="margin-top:16px;color:var(--success)"></div>
+          </div>
+        </section>
+
         <section class="card hidden" id="tab-types">
           <h3>Tipos de Massagem</h3>
           <div class="small">Cadastre nome e valor por hora</div>
@@ -130,8 +224,11 @@
               <h3>Clientes</h3>
               <div class="small">Visualize e gerencie os clientes cadastrados</div>
             </div>
-            <div style="display:flex;gap:8px;align-items:center">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <input type="text" id="clientSearchInput" class="input" placeholder="Buscar cliente..." style="width:200px"/>
+              <button class="btn btn-primary" onclick="openAddClientModal()">
+                <i class="fas fa-plus"></i> Novo Cliente
+              </button>
               <button class="btn btn-ghost" onclick="loadClientsUI()">
                 <i class="fas fa-sync-alt"></i>
               </button>
@@ -141,8 +238,15 @@
         </section>
 
         <section class="card hidden" id="tab-appointments">
-          <h3>Agendamentos</h3>
-          <div class="small">Filtre e gerencie seus agendamentos</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+            <div>
+              <h3>Agendamentos</h3>
+              <div class="small">Filtre e gerencie seus agendamentos</div>
+            </div>
+            <button class="btn btn-primary" onclick="openNewAppointmentModal()">
+              <i class="fas fa-plus"></i> Novo Agendamento
+            </button>
+          </div>
           
           <!-- Filtros de Período -->
           <div class="period-filters">
@@ -280,38 +384,156 @@
             </div>
           </div>
         </section>
-         <section class="card hidden" id="tab-backup">
-  <h3>Backup de Dados</h3>
-  <div class="small">Exporte ou restaure todos os dados do sistema.</div>
-  <div style="margin-top:24px; display:flex; gap:16px; flex-wrap:wrap;">
-    <button class="btn btn-primary" id="btnExportBackup">
-      <i class="fas fa-download"></i> Gerar Backup
-    </button>
-    <label class="btn btn-success" style="cursor:pointer;">
-      <i class="fas fa-upload"></i> Restaurar Backup
-      <input type="file" id="inputRestoreBackup" accept=".json" style="display:none"/>
-    </label>
-  </div>
-  <div id="backupStatus" style="margin-top:16px; color:var(--text-secondary);"></div>
-  <div class="small" style="margin-top:24px; color:#991b1b;">
-    <b>Atenção:</b> Restaurar backup irá sobrescrever todos os dados atuais do sistema!
-  </div>
 
-  <!-- NOVA SEÇÃO DE AGENDAMENTO DE BACKUP -->
-  <hr style="margin:32px 0 24px 0;">
-  <h4 style="margin-bottom:8px;">Agendar Backup Automático</h4>
-  <div class="small" style="margin-bottom:16px;">Escolha até 24 horários para backup automático. Se desejar, preencha um intervalo (em minutos) para gerar os horários automaticamente.</div>
-  
-  <form id="backupScheduleForm" autocomplete="off">
-    <div id="backupScheduleList"></div>
-    <div style="margin-top:16px; display:flex; gap:12px; flex-wrap:wrap;">
-      <button type="button" class="btn btn-primary btn-sm" id="addBackupTimeBtn">Adicionar Horário</button>
-      <button type="submit" class="btn btn-success btn-sm">Salvar Agendamento</button>
-      <span id="scheduleMsg" class="small"></span>
-    </div>
-  </form>
-</section>
+        <section class="card hidden" id="tab-backup">
+          <h3>Backup de Dados</h3>
+          <div class="small">Exporte ou restaure todos os dados do sistema.</div>
+          <div style="margin-top:24px; display:flex; gap:16px; flex-wrap:wrap;">
+            <button class="btn btn-primary" id="btnExportBackup">
+              <i class="fas fa-download"></i> Gerar Backup
+            </button>
+            <label class="btn btn-success" style="cursor:pointer;">
+              <i class="fas fa-upload"></i> Restaurar Backup
+              <input type="file" id="inputRestoreBackup" accept=".json" style="display:none"/>
+            </label>
+          </div>
+          <div id="backupStatus" style="margin-top:16px; color:var(--text-secondary);"></div>
+          <div class="small" style="margin-top:24px; color:#991b1b;">
+            <b>Atenção:</b> Restaurar backup irá sobrescrever todos os dados atuais do sistema!
+          </div>
+
+          <!-- NOVA SEÇÃO DE AGENDAMENTO DE BACKUP -->
+          <hr style="margin:32px 0 24px 0;">
+          <h4 style="margin-bottom:8px;">Agendar Backup Automático</h4>
+          <div class="small" style="margin-bottom:16px;">Escolha até 24 horários para backup automático. Se desejar, preencha um intervalo (em minutos) para gerar os horários automaticamente.</div>
+          
+          <form id="backupScheduleForm" autocomplete="off">
+            <div id="backupScheduleList"></div>
+            <div style="margin-top:16px; display:flex; gap:12px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-primary btn-sm" id="addBackupTimeBtn">Adicionar Horário</button>
+              <button type="submit" class="btn btn-success btn-sm">Salvar Agendamento</button>
+              <span id="scheduleMsg" class="small"></span>
+            </div>
+          </form>
+        </section>
       </main>
+    </div>
+
+    <!-- Modal de Adicionar Cliente -->
+    <div id="addClientModal" class="modal-overlay hidden" onclick="closeAddClientModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h2 class="modal-title">Novo Cliente</h2>
+          <button class="modal-close" onclick="closeAddClientModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div style="margin-bottom: 12px;">
+            <label class="small" style="display:block;margin-bottom:6px;font-weight:600">Nome Completo <span style="color:#ef4444">*</span></label>
+            <input id="newClientName" type="text" class="input" placeholder="Nome completo do cliente" required/>
+          </div>
+          <div style="margin-bottom: 12px;">
+            <label class="small" style="display:block;margin-bottom:6px;font-weight:600">Telefone <span style="color:#ef4444">*</span></label>
+            <input id="newClientPhone" type="tel" class="input" placeholder="(00) 00000-0000" required maxlength="15"/>
+          </div>
+          <div style="margin-bottom: 12px;">
+            <label class="small" style="display:block;margin-bottom:6px;font-weight:600">CPF</label>
+            <input id="newClientCpf" type="text" class="input" placeholder="000.000.000-00" maxlength="14"/>
+          </div>
+          <div style="margin-bottom: 12px;">
+            <label class="small" style="display:block;margin-bottom:6px;font-weight:600">Data de Nascimento</label>
+            <input id="newClientBirthdate" type="text" class="input" placeholder="DD/MM/AAAA" maxlength="10"/>
+          </div>
+          <div style="margin-bottom: 12px;">
+            <label class="small" style="display:block;margin-bottom:6px;font-weight:600">Email</label>
+            <input id="newClientEmail" type="email" class="input" placeholder="email@exemplo.com"/>
+          </div>
+          
+          <h4 style="margin: 20px 0 12px 0; color: var(--text); font-size: 1rem;">Endereço (Opcional)</h4>
+          <div style="margin-bottom: 12px; display: flex; gap: 8px;">
+            <input id="newClientCep" type="text" class="input" placeholder="CEP" maxlength="9" style="flex: 1;"/>
+            <button type="button" class="btn btn-ghost" onclick="searchCepNewClient()" style="padding: 14px 20px;">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+          <div style="margin-bottom: 12px;">
+            <input id="newClientStreet" type="text" class="input" placeholder="Rua"/>
+          </div>
+          <div style="margin-bottom: 12px; display: grid; grid-template-columns: 1fr 2fr; gap: 8px;">
+            <input id="newClientNumber" type="text" class="input" placeholder="Número"/>
+            <input id="newClientComplement" type="text" class="input" placeholder="Complemento"/>
+          </div>
+          <div style="margin-bottom: 12px;">
+            <input id="newClientNeighborhood" type="text" class="input" placeholder="Bairro"/>
+          </div>
+          <div style="margin-bottom: 12px; display: grid; grid-template-columns: 2fr 1fr; gap: 8px;">
+            <input id="newClientCity" type="text" class="input" placeholder="Cidade"/>
+            <input id="newClientState" type="text" class="input" placeholder="UF" maxlength="2"/>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="closeAddClientModal()">Cancelar</button>
+          <button class="btn btn-primary" onclick="saveNewClient()">Salvar Cliente</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Novo Agendamento -->
+    <div id="newAppointmentModal" class="modal-overlay hidden" onclick="closeNewAppointmentModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h2 class="modal-title">Novo Agendamento</h2>
+          <button class="modal-close" onclick="closeNewAppointmentModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <!-- Cliente -->
+          <div style="margin-bottom: 12px;">
+            <label class="small" style="display:block;margin-bottom:6px;font-weight:600">Cliente <span style="color:#ef4444">*</span></label>
+            <input id="appointmentClientName" type="text" class="input" placeholder="Digite o nome do cliente" autocomplete="off"/>
+            <div id="clientSuggestions" class="client-suggestions hidden"></div>
+          </div>
+          
+          <!-- Telefone (oculto inicialmente) -->
+          <div id="appointmentPhoneContainer" class="hidden" style="margin-bottom: 12px;">
+            <label class="small" style="display:block;margin-bottom:6px;font-weight:600">Telefone <span style="color:#ef4444">*</span></label>
+            <input id="appointmentClientPhone" type="tel" class="input" placeholder="(00) 00000-0000" maxlength="15"/>
+          </div>
+          
+          <!-- Tipo de Massagem -->
+          <div style="margin-bottom: 12px;">
+            <label class="small" style="display:block;margin-bottom:6px;font-weight:600">Tipo de Massagem <span style="color:#ef4444">*</span></label>
+            <select id="appointmentMassageType" class="input">
+              <option value="">Selecione o tipo</option>
+            </select>
+          </div>
+          
+          <div class="price-display" id="appointmentPriceDisplay" style="margin-bottom:16px">
+            <span class="small">Valor da sessão:</span>
+            <span class="price-value" id="appointmentPrice">R$ 0,00</span>
+          </div>
+          
+          <!-- Data -->
+          <div style="margin-bottom: 12px;">
+            <label class="small" style="display:block;margin-bottom:6px;font-weight:600">Data <span style="color:#ef4444">*</span></label>
+            <div id="appointmentCalendar" class="calendar-client"></div>
+          </div>
+          
+          <!-- Horários -->
+          <div id="appointmentTimeSlotsSection" class="hidden" style="margin-bottom: 12px;">
+            <label class="small" style="display:block;margin-bottom:6px;font-weight:600">Horário <span style="color:#ef4444">*</span></label>
+            <div id="appointmentTimeSlots" class="time-slots-grid"></div>
+          </div>
+          
+          <!-- Observações -->
+          <div style="margin-bottom: 12px;">
+            <label class="small" style="display:block;margin-bottom:6px;font-weight:600">Observações</label>
+            <textarea id="appointmentNote" class="input" rows="2" placeholder="Observações sobre o agendamento"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="closeNewAppointmentModal()">Cancelar</button>
+          <button class="btn btn-primary" onclick="saveNewAppointment()">Confirmar Agendamento</button>
+        </div>
+      </div>
     </div>
 
     <!-- Modal de Detalhes do Cliente -->
@@ -329,6 +551,8 @@
         </div>
       </div>
     </div>
+
+
 
     <!-- RODAPÉ -->
     <footer class="app-footer">
@@ -412,6 +636,3 @@
   <script src="admin.js"></script>
 </body>
 </html>
-
-
-
