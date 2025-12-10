@@ -2230,4 +2230,438 @@ select:focus-visible,
   }
 }
 
+/* ===== ESTILOS PARA AUTOCOMPLETAR CLIENTE ===== */
+.client-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid var(--primary);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
 
+.suggestion-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-item:hover {
+  background: var(--accent-light);
+}
+
+#appointmentClientName {
+  position: relative;
+}
+
+/* ===== TIME SLOTS GRID ===== */
+.time-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.time-slot {
+  background: white;
+  border: 2px solid #e6f1ee;
+  border-radius: var(--radius-sm);
+  padding: 12px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.time-slot:hover {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  transform: translateY(-2px);
+}
+
+.time-slot.selected {
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  border-color: var(--primary);
+  color: white;
+}
+
+.time-label {
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+
+.status-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-label.available {
+  color: var(--success);
+}
+
+.time-slot.selected .status-label {
+  color: white;
+}
+
+.loading, .no-slots, .error {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.error {
+  color: var(--danger);
+}
+
+/* ===== PRICE DISPLAY ===== */
+.price-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #e6fff2, #f0fff8);
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--accent);
+}
+
+.price-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ===== MODAL RESPONSIVO ===== */
+@media (max-width: 768px) {
+  .modal {
+    max-width: 95%;
+    max-height: 95vh;
+  }
+  
+  .time-slots-grid {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  }
+  
+  .client-suggestions {
+    max-height: 150px;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal {
+    padding: 16px;
+  }
+  
+  .modal-header {
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+  }
+  
+  .modal-title {
+    font-size: 1.25rem;
+  }
+  
+  .time-slots-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  
+  .time-slot {
+    padding: 10px 6px;
+  }
+  
+  .time-label {
+    font-size: 0.9rem;
+  }
+  
+  .status-label {
+    font-size: 0.65rem;
+  }
+}
+
+/* Estilos adicionais para a configuração de horários */
+
+/* Container principal de configuração */
+.schedule-config-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 24px;
+}
+
+/* Seções de configuração */
+.config-section {
+  background: linear-gradient(135deg, #ffffff 0%, #fbfffe 100%);
+  border: 2px solid #e6f1ee;
+  border-radius: var(--radius);
+  padding: 20px;
+  transition: all 0.3s ease;
+}
+
+.config-section:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(15, 43, 42, 0.08);
+}
+
+.config-section h4 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.config-section h4 i {
+  color: var(--primary);
+  font-size: 1.2rem;
+}
+
+/* Grid de dias da semana */
+.weekdays-config {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.weekday-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: white;
+  border: 2px solid #e6f1ee;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.weekday-checkbox:hover {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  transform: translateY(-2px);
+}
+
+.weekday-checkbox input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.weekday-checkbox input[type="checkbox"]:checked + span {
+  color: var(--primary);
+}
+
+.weekday-checkbox:has(input:checked) {
+  border-color: var(--primary);
+  background: linear-gradient(135deg, #e6fff2, #f0fff8);
+}
+
+/* Horários por dia */
+.day-schedule-item {
+  background: white;
+  border: 2px solid #e6f1ee;
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
+}
+
+.day-schedule-item:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(15, 43, 42, 0.06);
+}
+
+.day-schedule-header {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e6f1ee;
+}
+
+.day-schedule-header strong {
+  color: var(--primary);
+  font-size: 1rem;
+}
+
+/* Intervalos */
+.interval-global {
+  background: linear-gradient(135deg, #e6fff2, #f0fff8);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.day-interval-section {
+  background: white;
+  border: 2px solid #e6f1ee;
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
+}
+
+.day-interval-section:hover {
+  border-color: var(--accent);
+}
+
+.day-interval-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e6f1ee;
+}
+
+.day-interval-header strong {
+  color: var(--primary);
+  font-size: 1rem;
+}
+
+.intervals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.interval-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  border: 2px solid #e6f1ee;
+  transition: all 0.2s ease;
+}
+
+.interval-item:hover {
+  border-color: var(--accent);
+}
+
+.interval-item input[type="time"] {
+  flex-shrink: 0;
+}
+
+.interval-item button {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Status de salvamento */
+#scheduleConfigStatus {
+  padding: 12px;
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .weekdays-config {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .day-interval-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .interval-item {
+    flex-wrap: wrap;
+  }
+  
+  .interval-item button {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .weekdays-config {
+    grid-template-columns: 1fr;
+  }
+  
+  .config-section {
+    padding: 16px;
+  }
+  
+  .interval-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .interval-item span {
+    text-align: center;
+    padding: 4px 0;
+  }
+}
+
+/* Animações */
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.config-section {
+  animation: slideInDown 0.3s ease backwards;
+}
+
+.config-section:nth-child(1) { animation-delay: 0.05s; }
+.config-section:nth-child(2) { animation-delay: 0.1s; }
+.config-section:nth-child(3) { animation-delay: 0.15s; }
+.config-section:nth-child(4) { animation-delay: 0.2s; }
+
+.weekday-checkbox {
+  animation: slideInDown 0.2s ease backwards;
+}
+
+.weekday-checkbox:nth-child(1) { animation-delay: 0.05s; }
+.weekday-checkbox:nth-child(2) { animation-delay: 0.1s; }
+.weekday-checkbox:nth-child(3) { animation-delay: 0.15s; }
+.weekday-checkbox:nth-child(4) { animation-delay: 0.2s; }
+.weekday-checkbox:nth-child(5) { animation-delay: 0.25s; }
+.weekday-checkbox:nth-child(6) { animation-delay: 0.3s; }
+.weekday-checkbox:nth-child(7) { animation-delay: 0.35s; }
