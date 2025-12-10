@@ -239,6 +239,7 @@ if (document.getElementById('appointmentClientPhone')) {
 }
 
 // Configuração padrão de horários
+// Configuração padrão de horários
 const DEFAULT_SCHEDULE_CONFIG = {
   sessionDuration: 60,
   enabledDays: [1, 2, 3, 4, 5],
@@ -533,6 +534,7 @@ function generateTimeSlotsForDay(date) {
   return slots;
 }
 
+
 // ====================
 // AUTENTICAÇÃO ADMIN
 // ====================
@@ -651,7 +653,7 @@ sbItems.forEach(item => {
 
 function openTab(tab) {
   tabDashboard.classList.add('hidden');
-  if (tabSchedule) tabSchedule.classList.add('hidden');
+  if (tabSchedule) tabSchedule.classList.add('hidden'); // ADICIONE ESTA LINHA
   tabTypes.classList.add('hidden');
   tabClients.classList.add('hidden');
   tabAppointments.classList.add('hidden');
@@ -659,11 +661,13 @@ function openTab(tab) {
   document.getElementById('tab-backup').classList.add('hidden');
 
   if (tab === 'dashboard') tabDashboard.classList.remove('hidden');
+  // ADICIONE ESTAS LINHAS
   if (tab === 'schedule' && tabSchedule) {
     tabSchedule.classList.remove('hidden');
     loadScheduleConfig();
   }
   if (tab === 'types') tabTypes.classList.remove('hidden');
+
 if (tab === 'schedule' && document.getElementById('tab-schedule')) {
   document.getElementById('tab-schedule').classList.remove('hidden');
   loadScheduleConfig();
@@ -2535,17 +2539,133 @@ async function updateDayDetail() {
     return;
   }
   
+  const dateStr = toDateStr(selectedDate);
+  currentDayAvailability = await getDayAvailability(dateStr);
+  
   const dayAppointments = allAppointments.filter(a => {
     const d = new Date(a.start);
     return d.toDateString() === selectedDate.toDateString();
   });
   
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const isPastDate = selectedDate < today;
+  const isToday = selectedDate.getTime() === today.getTime();
+  const currentHour = today.getHours();
+  const currentMinute = today.getMinutes();
+  
+  // Checkbox para habilitar/desabilitar todos
+  const toggleAllRow = document.createElement('div');
+  toggleAllRow.style.marginBottom = '16px';
+  toggleAllRow.style.display = 'flex';
+  toggleAllRow.style.alignItems = 'center';
+  toggleAllRow.style.gap = '12px';
+  toggleAllRow.style.padding = '12px';
+  toggleAllRow.style.background = 'linear-gradient(135deg, #e6fff2, #f0fff8)';
+  toggleAllRow.style.borderRadius = '12px';
+  
+  const toggleAllCheckbox = document.createElement('input');
+  toggleAllCheckbox.type = 'checkbox';
+  toggleAllCheckbox.id = 'toggleAll';
+  toggleAllCheckbox.style.width = '20px';
+  toggleAllCheckbox.style.height = '20px';
+  toggleAllCheckbox.style.cursor = 'pointer';
+  toggleAllCheckbox.style.accentColor = 'var(--primary)';
+  
+  // Verificar se todos os horários disponíveis estão habilitados
+  const availableSlots = slots.filter(slot => {
+    const slotDate = new Date(selectedDate);
+    slotDate.setHours(slot.hour, slot.minute, 0, 0);
+    const isPast = isPastDate || (isToday && (slot.hour < currentHour || (slot.hour === currentHour && slot.minute < currentMinute)));
+    const hasAppointment = dayAppointments.some(a => {
+      const d = new Date(a.start);
+      return d.getHours() === slot.hour && d.getMinutes() === slot.minute;
+    });
+    return !isPast && !hasAppointment;
+  });
+  
+  const allEnabled = availableSlots.every(slot => {
+    const key = `${slot.hour}:${slot.minute}`;
+    return currentDayAvailability[key] !== false;
+  });
+  
+  toggleAllCheckbox.checked = allEnabled;
+  
+  if (isPastDate) {
+    toggleAllCheckbox.disabled = true;
+    toggleAllCheckbox.style.cursor = 'not-allowed';
+  }
+  
+  const toggleAllLabel = document.createElement('label');
+  toggleAllLabel.htmlFor = 'toggleAll';
+  toggleAllLabel.style.fontWeight = '700';
+  toggleAllLabel.style.cursor = isPastDate ? 'not-allowed' : 'pointer';
+  toggleAllLabel.style.flex = '1';
+  toggleAllLabel.textContent = 'Habilitar/Desabilitar todos os horários';
+  
+  if (!isPastDate) {
+    toggleAllCheckbox.addEventListener('change', async () => {
+      const newValue = toggleAllCheckbox.checked;
+      availableSlots.forEach(slot => {
+        const key = `${slot.hour}:${slot.minute}`;
+        currentDayAvailability[key] = newValue;
+      });
+      try {
+        await saveDayAvailability(dateStr, currentDayAvailability);
+        await updateDayDetail();
+      } catch (error) {
+        console.error('Erro ao salvar disponibilidade:', error);
+        alert('Erro ao atualizar disponibilidade');
+      }
+    });
+  }
+  
+  toggleAllRow.appendChild(toggleAllCheckbox);
+  toggleAllRow.appendChild(toggleAllLabel);
+  hourlyList.appendChild(toggleAllRow);
+  
+  // Renderizar cada horário
   slots.forEach(slot => {
     const row = document.createElement('div');
     row.className = 'hour-row';
     row.style.display = 'flex';
     row.style.alignItems = 'center';
     row.style.gap = '10px';
+    
+    const slotDate = new Date(selectedDate);
+    slotDate.setHours(slot.hour, slot.minute, 0, 0);
+    
+    const isPastHour = isPastDate || (isToday && (slot.hour < currentHour || (slot.hour === currentHour && slot.minute < currentMinute)));
+    
+    const appt = dayAppointments.find(a => {
+      const d = new Date(a.start);
+      return d.getHours() === slot.hour && d.getMinutes() === slot.minute;
+    });
+    
+    // Checkbox (desabilitado se for passado ou tiver agendamento)
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    const key = `${slot.hour}:${slot.minute}`;
+    checkbox.checked = currentDayAvailability[key] !== false;
+    checkbox.style.width = '20px';
+    checkbox.style.height = '20px';
+    checkbox.style.cursor = (isPastHour || appt) ? 'not-allowed' : 'pointer';
+    checkbox.style.flexShrink = '0';
+    checkbox.style.accentColor = 'var(--primary)';
+    checkbox.disabled = isPastHour || !!appt;
+    
+    if (!isPastHour && !appt) {
+      checkbox.addEventListener('change', async () => {
+        currentDayAvailability[key] = checkbox.checked;
+        try {
+          await saveDayAvailability(dateStr, currentDayAvailability);
+          await updateDayDetail();
+        } catch (error) {
+          console.error('Erro ao salvar disponibilidade:', error);
+          alert('Erro ao atualizar disponibilidade');
+        }
+      });
+    }
     
     const time = document.createElement('div');
     time.className = 'hour-time';
@@ -2554,14 +2674,6 @@ async function updateDayDetail() {
     const slotDiv = document.createElement('div');
     slotDiv.className = 'hour-slot card';
     slotDiv.style.flex = '1';
-    
-    const slotDate = new Date(selectedDate);
-    slotDate.setHours(slot.hour, slot.minute, 0, 0);
-    
-    const appt = dayAppointments.find(a => {
-      const d = new Date(a.start);
-      return d.getHours() === slot.hour && d.getMinutes() === slot.minute;
-    });
     
     if (appt) {
       const booked = document.createElement('div');
@@ -2632,15 +2744,18 @@ async function updateDayDetail() {
       booked.appendChild(statusSelect);
       slotDiv.appendChild(booked);
     } else {
-      slotDiv.innerHTML = '<div class="slot-empty">Livre</div>';
+      const isAvailable = currentDayAvailability[key] !== false;
+      const statusText = isPastHour ? 'Horário passado' : (isAvailable ? 'Livre' : 'Indisponível');
+      const statusColor = isPastHour ? 'color: #9ca3af; font-style: italic;' : (isAvailable ? '' : 'color: #ef4444; font-weight: 600;');
+      slotDiv.innerHTML = `<div class="slot-empty" style="${statusColor}">${statusText}</div>`;
     }
     
+    row.appendChild(checkbox);
     row.appendChild(time);
     row.appendChild(slotDiv);
     hourlyList.appendChild(row);
   });
 }
-
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -3140,8 +3255,7 @@ async function init() {
     allTypes = await getAllTypes();
     allAppointments = await getAllAppointments();
     
-    // Carregar todos os clientes inicialmente
-    console.log('🔄 Carregando clientes...');
+    console.log('📄 Carregando clientes...');
     const usersSnapshot = await firebase.firestore().collection('users').get();
     allClients = {};
     
@@ -3164,7 +3278,7 @@ async function init() {
     console.log('✅ Clientes carregados:', Object.keys(allClients).length);
     
     loadTypesUI();
-await loadScheduleConfig();
+    await loadScheduleConfig(); // ADICIONE ESTA LINHA
     renderCalendar();
     
     setupPeriodFilters();
