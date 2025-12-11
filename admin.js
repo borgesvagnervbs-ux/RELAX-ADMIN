@@ -2004,19 +2004,19 @@ async function loadAppointmentTimeSlots() {
     
     // ADICIONE ESTA VERIFICAÇÃO:
     if (slots.length === 0) {
-      appointmentTimeSlots.innerHTML = `
-        <div class="card" style="background: linear-gradient(135deg, #fee2e2, #fecaca); border: 2px solid #ef4444; padding: 20px; text-align: center; margin-top: 12px;">
-          <i class="fas fa-times-circle" style="font-size: 2.5rem; color: #991b1b; margin-bottom: 12px;"></i>
-          <div style="font-weight: 700; font-size: 1rem; color: #991b1b; margin-bottom: 8px;">
-            Este dia não está disponível para agendamentos.
-          </div>
-          <div class="small" style="color: #7f1d1d;">
-            Selecione outro dia ou configure os horários de atendimento.
-          </div>
-        </div>
-      `;
-      return;
-    }
+  appointmentTimeSlots.innerHTML = `
+    <div class="no-slots-alert">
+      <div class="no-slots-icon">
+        <i class="fas fa-times-circle"></i>
+      </div>
+      <div class="no-slots-content">
+        <h4>Este dia não está disponível</h4>
+        <p>Selecione outro dia ou configure os horários de atendimento.</p>
+      </div>
+    </div>
+  `;
+  return;
+}
     
     const dateStr = toDateStr(appointmentSelectedDate);
     const dayAvailability = await getDayAvailability(dateStr);
@@ -2071,19 +2071,19 @@ async function loadAppointmentTimeSlots() {
     });
     
     // SUBSTITUA O BLOCO EXISTENTE POR ESTE:
-    if (!hasAvailableSlots) {
-      appointmentTimeSlots.innerHTML = `
-        <div class="card" style="background: linear-gradient(135deg, #fee2e2, #fecaca); border: 2px solid #ef4444; padding: 20px; text-align: center; margin-top: 12px;">
-          <i class="fas fa-clock" style="font-size: 2.5rem; color: #991b1b; margin-bottom: 12px;"></i>
-          <div style="font-weight: 700; font-size: 1rem; color: #991b1b; margin-bottom: 8px;">
-            ${isToday ? 'Horário de atendimento encerrado.' : 'Nenhum horário disponível neste dia.'}
-          </div>
-          <div class="small" style="color: #7f1d1d;">
-            ${isToday ? 'Todos os horários de hoje já passaram. Selecione outro dia.' : 'Todos os horários estão ocupados ou desabilitados.'}
-          </div>
-        </div>
-      `;
-    }
+  if (!hasAvailableSlots) {
+  appointmentTimeSlots.innerHTML = `
+    <div class="no-slots-alert warning">
+      <div class="no-slots-icon">
+        <i class="fas fa-clock"></i>
+      </div>
+      <div class="no-slots-content">
+        <h4>${isToday ? 'Horário de atendimento encerrado' : 'Nenhum horário disponível'}</h4>
+        <p>${isToday ? 'Todos os horários de hoje já passaram. Selecione outro dia.' : 'Todos os horários estão ocupados ou desabilitados.'}</p>
+      </div>
+    </div>
+  `;
+}
   } catch (error) {
     console.error('Erro ao carregar horários:', error);
     appointmentTimeSlots.innerHTML = '<div class="error">Erro ao carregar horários</div>';
