@@ -1797,17 +1797,22 @@ function openNewAppointmentModal() {
   appointmentMassageType.value = '';
   appointmentPrice.textContent = 'R$ 0,00';
   appointmentNote.value = '';
-  appointmentSelectedDate = null;
   appointmentSelectedHour = null;
   selectedClientId = null;
-  appointmentTimeSlotsSection.classList.add('hidden');
   
   // Carregar tipos de massagem
   loadAppointmentTypes();
   
-  // Renderizar calendário
+  // AJUSTE AQUI: Selecionar data atual automaticamente
   appointmentCurrentMonth = new Date();
+  appointmentSelectedDate = new Date();
+  appointmentSelectedDate.setHours(0, 0, 0, 0);
+  
+  // Renderizar calendário
   renderAppointmentCalendar();
+  
+  // NOVO: Carregar horários automaticamente para hoje
+  loadAppointmentTimeSlots();
   
   newAppointmentModal.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
@@ -1994,6 +1999,25 @@ async function loadAppointmentTimeSlots() {
   appointmentTimeSlots.innerHTML = '<div class="loading">Carregando horários...</div>';
   
   try {
+    // Gerar slots baseado na configuração
+    const slots = generateTimeSlotsForDay(appointmentSelectedDate);
+    
+    // ADICIONE ESTA VERIFICAÇÃO:
+    if (slots.length === 0) {
+      appointmentTimeSlots.innerHTML = `
+        <div class="card" style="background: linear-gradient(135deg, #fee2e2, #fecaca); border: 2px solid #ef4444; padding: 20px; text-align: center; margin-top: 12px;">
+          <i class="fas fa-times-circle" style="font-size: 2.5rem; color: #991b1b; margin-bottom: 12px;"></i>
+          <div style="font-weight: 700; font-size: 1rem; color: #991b1b; margin-bottom: 8px;">
+            Este dia não está disponível para agendamentos.
+          </div>
+          <div class="small" style="color: #7f1d1d;">
+            Selecione outro dia ou configure os horários de atendimento.
+          </div>
+        </div>
+      `;
+      return;
+    }
+    
     const dateStr = toDateStr(appointmentSelectedDate);
     const dayAvailability = await getDayAvailability(dateStr);
     const dayAppointments = allAppointments.filter(ap => {
@@ -2005,42 +2029,60 @@ async function loadAppointmentTimeSlots() {
     const now = new Date();
     const isToday = appointmentSelectedDate.toDateString() === now.toDateString();
     const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
     let hasAvailableSlots = false;
     
-    for (let hour = 8; hour <= 22; hour++) {
+    slots.forEach(slot => {
       const slotDate = new Date(appointmentSelectedDate);
-      slotDate.setHours(hour, 0, 0, 0);
+      slotDate.setHours(slot.hour, slot.minute, 0, 0);
       
-      if (isToday && hour <= currentHour) continue;
-      if (dayAvailability[hour] === false) continue;
+      const isPastHour = isToday && (slot.hour < currentHour || (slot.hour === currentHour && slot.minute <= currentMinute));
+      
+      // Pular horários passados
+      if (isPastHour) return;
+      
+      const key = `${slot.hour}:${slot.minute}`;
+      const isDisabled = dayAvailability[key] === false;
       
       const isBooked = dayAppointments.some(ap => {
         const apDate = new Date(ap.start);
-        return apDate.getHours() === hour;
+        return apDate.getHours() === slot.hour && apDate.getMinutes() === slot.minute;
       });
-      if (isBooked) continue;
+      
+      if (isBooked || isDisabled) return;
       
       hasAvailableSlots = true;
-      const slot = document.createElement('div');
-      slot.className = 'time-slot';
-      if (appointmentSelectedHour === hour) slot.classList.add('selected');
+      const slotEl = document.createElement('div');
+      slotEl.className = 'time-slot';
+      if (appointmentSelectedHour === slot.hour) slotEl.classList.add('selected');
       
       const timeLabel = document.createElement('div');
       timeLabel.className = 'time-label';
-      timeLabel.textContent = `${hour.toString().padStart(2, '0')}:00`;
+      timeLabel.textContent = slot.time;
       
       const statusLabel = document.createElement('div');
       statusLabel.className = 'status-label available';
       statusLabel.textContent = 'Disponível';
       
-      slot.appendChild(timeLabel);
-      slot.appendChild(statusLabel);
-      slot.onclick = () => selectAppointmentTimeSlot(hour, slot);
-      appointmentTimeSlots.appendChild(slot);
-    }
+      slotEl.appendChild(timeLabel);
+      slotEl.appendChild(statusLabel);
+      slotEl.onclick = () => selectAppointmentTimeSlot(slot.hour, slotEl);
+      appointmentTimeSlots.appendChild(slotEl);
+    });
     
+    // SUBSTITUA O BLOCO EXISTENTE POR ESTE:
     if (!hasAvailableSlots) {
-      appointmentTimeSlots.innerHTML = '<div class="no-slots">Nenhum horário disponível neste dia</div>';
+      appointmentTimeSlots.innerHTML = `
+        <div class="card" style="background: linear-gradient(135deg, #fee2e2, #fecaca); border: 2px solid #ef4444; padding: 20px; text-align: center; margin-top: 12px;">
+          <i class="fas fa-clock" style="font-size: 2.5rem; color: #991b1b; margin-bottom: 12px;"></i>
+          <div style="font-weight: 700; font-size: 1rem; color: #991b1b; margin-bottom: 8px;">
+            ${isToday ? 'Horário de atendimento encerrado.' : 'Nenhum horário disponível neste dia.'}
+          </div>
+          <div class="small" style="color: #7f1d1d;">
+            ${isToday ? 'Todos os horários de hoje já passaram. Selecione outro dia.' : 'Todos os horários estão ocupados ou desabilitados.'}
+          </div>
+        </div>
+      `;
     }
   } catch (error) {
     console.error('Erro ao carregar horários:', error);
@@ -2535,7 +2577,17 @@ async function updateDayDetail() {
   const slots = generateTimeSlotsForDay(selectedDate);
   
   if (slots.length === 0) {
-    hourlyList.innerHTML = '<div class="small" style="text-align:center;padding:24px">Nenhum horário configurado para este dia</div>';
+    hourlyList.innerHTML = `
+      <div class="card" style="background: linear-gradient(135deg, #fee2e2, #fecaca); border: 2px solid #ef4444; padding: 20px; text-align: center;">
+        <i class="fas fa-times-circle" style="font-size: 3rem; color: #991b1b; margin-bottom: 12px;"></i>
+        <div style="font-weight: 700; font-size: 1.1rem; color: #991b1b; margin-bottom: 8px;">
+          Este dia não está disponível para agendamentos.
+        </div>
+        <div class="small" style="color: #7f1d1d;">
+          Configure os dias de atendimento na aba "Horários de Atendimento".
+        </div>
+      </div>
+    `;
     return;
   }
   
