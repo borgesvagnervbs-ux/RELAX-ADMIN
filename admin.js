@@ -2069,19 +2069,26 @@ async function loadAppointmentTimeSlots() {
     });
     
     // SUBSTITUA ESTE BLOCO (segundo alerta)
-    if (!hasAvailableSlots) {
-      appointmentTimeSlots.innerHTML = `
-        <div class="no-slots-alert warning">
-          <div class="appointment-alert-icon">
-            <i class="fas fa-clock"></i>
-          </div>
-          <div class="appointment-alert-content">
-            <div class="appointment-alert-title">${isToday ? 'Horários encerrados' : 'Sem horários livres'}</div>
-            <div class="appointment-alert-text">${isToday ? 'Todos os horários de hoje já passaram. Selecione uma data futura.' : 'Todos os horários deste dia estão ocupados ou desabilitados. Tente outra data.'}</div>
-          </div>
-        </div>
-      `;
-    }
+    // ALERTA PADRÃO - SEM HORÁRIOS DISPONÍVEIS
+if (!hasAvailableSlots) {
+  appointmentTimeSlots.innerHTML = `
+    <div class="no-slots-alert warning">
+      <div class="no-slots-icon">
+        <i class="fas fa-clock"></i>
+      </div>
+      <div class="no-slots-content">
+        <h4>${isToday ? 'Horários encerrados' : 'Sem horários livres'}</h4>
+        <p>
+          ${isToday 
+            ? 'Todos os horários de hoje já passaram. Selecione uma data futura.' 
+            : 'Todos os horários deste dia estão ocupados ou desabilitados. Tente outra data.'
+          }
+        </p>
+      </div>
+    </div>
+  `;
+}
+
   } catch (error) {
     console.error('Erro ao carregar horários:', error);
     appointmentTimeSlots.innerHTML = '<div class="error">Erro ao carregar horários</div>';
@@ -2574,20 +2581,23 @@ async function updateDayDetail() {
 
   const slots = generateTimeSlotsForDay(selectedDate);
   
-  if (slots.length === 0) {
-    hourlyList.innerHTML = `
-      <div class="card" style="background: linear-gradient(135deg, #fee2e2, #fecaca); border: 2px solid #ef4444; padding: 20px; text-align: center;">
-        <i class="fas fa-times-circle" style="font-size: 3rem; color: #991b1b; margin-bottom: 12px;"></i>
-        <div style="font-weight: 700; font-size: 1.1rem; color: #991b1b; margin-bottom: 8px;">
-          Este dia não está disponível para agendamentos.
-        </div>
-        <div class="small" style="color: #7f1d1d;">
-          Configure os dias de atendimento na aba "Horários de Atendimento".
-        </div>
+ // ALERTA PADRÃO - DIA NÃO DISPONÍVEL
+if (slots.length === 0) {
+  appointmentTimeSlots.innerHTML = `
+    <div class="no-slots-alert">
+      <div class="no-slots-icon">
+        <i class="fas fa-calendar-times"></i>
       </div>
-    `;
-    return;
-  }
+      <div class="no-slots-content">
+        <h4>Dia não disponível</h4>
+        <p>Este dia não está configurado para atendimento. 
+        Selecione outro dia ou configure os horários na aba "Horários de Atendimento".</p>
+      </div>
+    </div>
+  `;
+  return;
+}
+
   
   const dateStr = toDateStr(selectedDate);
   currentDayAvailability = await getDayAvailability(dateStr);
