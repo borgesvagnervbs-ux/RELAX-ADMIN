@@ -2004,7 +2004,7 @@ async function loadAppointmentTimeSlots() {
     // SUBSTITUA ESTE BLOCO (primeiro alerta)
     if (slots.length === 0) {
       appointmentTimeSlots.innerHTML = `
-        <div class="appointment-no-slots-alert">
+        <div class="no-slots-alert">
           <div class="appointment-alert-icon">
             <i class="fas fa-calendar-times"></i>
           </div>
@@ -2071,7 +2071,7 @@ async function loadAppointmentTimeSlots() {
     // SUBSTITUA ESTE BLOCO (segundo alerta)
     if (!hasAvailableSlots) {
       appointmentTimeSlots.innerHTML = `
-        <div class="appointment-no-slots-alert warning">
+        <div class="no-slots-alert warning">
           <div class="appointment-alert-icon">
             <i class="fas fa-clock"></i>
           </div>
@@ -2295,7 +2295,7 @@ function computeFinanceData() {
       stats.className = 'ranking-stats';
       stats.innerHTML = `
         <div class="ranking-percentage">${item.percentage.toFixed(1)}%</div>
-        <div class="ranking-count">${item.count} sessõ${item.count > 1 ? 'es' : 'ão'}</div>
+        <div class="ranking-count">${item.count} sess${item.count > 1 ? 'ões' : 'ão'}</div>
       `;
       
       rankItem.appendChild(position);
