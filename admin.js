@@ -331,7 +331,7 @@ async function updateDayDetail() {
 // ====================
 // PARTE 4 - Firebase interactions, load/save, backup
 // ====================
-const db = (typeof firebase !== 'undefined' && firebase.firestore) ? firebase.firestore() : null;
+
 
 let typesCollection = null;
 let clientsCollection = null;
@@ -685,3 +685,4 @@ async function initializeAdmin() {
 initializeAdmin();
 
 // End of combined admin.js
+
