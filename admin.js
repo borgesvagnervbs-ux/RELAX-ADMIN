@@ -2002,20 +2002,22 @@ async function loadAppointmentTimeSlots() {
     const slots = generateTimeSlotsForDay(appointmentSelectedDate);
     
     // SUBSTITUA ESTE BLOCO (primeiro alerta)
-    if (slots.length === 0) {
-      appointmentTimeSlots.innerHTML = `
-        <div class="no-slots-alert">
-          <div class="appointment-alert-icon">
-            <i class="fas fa-calendar-times"></i>
-          </div>
-          <div class="appointment-alert-content">
-            <div class="appointment-alert-title">Dia não disponível</div>
-            <div class="appointment-alert-text">Este dia não está configurado para atendimento. Selecione outro dia ou configure os horários na aba "Horários de Atendimento".</div>
-          </div>
-        </div>
-      `;
-      return;
-    }
+    // ALERTA PADRÃO - DIA NÃO DISPONÍVEL
+if (slots.length === 0) {
+  appointmentTimeSlots.innerHTML = `
+    <div class="no-slots-alert">
+      <div class="no-slots-icon">
+        <i class="fas fa-calendar-times"></i>
+      </div>
+      <div class="no-slots-content">
+        <h4>Dia não disponível</h4>
+        <p>Este dia não está configurado para atendimento. 
+        Selecione outro dia ou configure os horários na aba "Horários de Atendimento".</p>
+      </div>
+    </div>
+  `;
+  return;
+}
     
     const dateStr = toDateStr(appointmentSelectedDate);
     const dayAvailability = await getDayAvailability(dateStr);
@@ -2070,6 +2072,8 @@ async function loadAppointmentTimeSlots() {
     
     // SUBSTITUA ESTE BLOCO (segundo alerta)
     // ALERTA PADRÃO - SEM HORÁRIOS DISPONÍVEIS
+
+// ALERTA PADRÃO - SEM HORÁRIOS DISPONÍVEIS
 if (!hasAvailableSlots) {
   appointmentTimeSlots.innerHTML = `
     <div class="no-slots-alert warning">
@@ -2088,7 +2092,6 @@ if (!hasAvailableSlots) {
     </div>
   `;
 }
-
   } catch (error) {
     console.error('Erro ao carregar horários:', error);
     appointmentTimeSlots.innerHTML = '<div class="error">Erro ao carregar horários</div>';
@@ -2582,6 +2585,7 @@ async function updateDayDetail() {
   const slots = generateTimeSlotsForDay(selectedDate);
   
  // ALERTA PADRÃO - DIA NÃO DISPONÍVEL
+// ALERTA PADRÃO - DIA NÃO DISPONÍVEL
 if (slots.length === 0) {
   appointmentTimeSlots.innerHTML = `
     <div class="no-slots-alert">
@@ -2597,7 +2601,6 @@ if (slots.length === 0) {
   `;
   return;
 }
-
   
   const dateStr = toDateStr(selectedDate);
   currentDayAvailability = await getDayAvailability(dateStr);
