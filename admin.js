@@ -2584,7 +2584,6 @@ async function updateDayDetail() {
 
   const slots = generateTimeSlotsForDay(selectedDate);
   
- // ALERTA PADRÃO - DIA NÃO DISPONÍVEL
 // ALERTA PADRÃO - DIA NÃO DISPONÍVEL
 if (slots.length === 0) {
   appointmentTimeSlots.innerHTML = `
