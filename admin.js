@@ -332,20 +332,12 @@ async function updateDayDetail() {
 // PARTE 4 - Firebase interactions, load/save, backup
 // ====================
 
+let typesCollection = db.collection('types');
+let clientsCollection = db.collection('clients');
+let appointmentsCollection = db.collection('appointments');
+let scheduleConfigDoc = db.collection('config').doc('schedule');
+let availabilityCollection = db.collection('availability');
 
-let typesCollection = null;
-let clientsCollection = null;
-let appointmentsCollection = null;
-let scheduleConfigDoc = null;
-let availabilityCollection = null;
-
-if (db) {
-  typesCollection = db.collection('types');
-  clientsCollection = db.collection('clients');
-  appointmentsCollection = db.collection('appointments');
-  scheduleConfigDoc = db.collection('config').doc('schedule');
-  availabilityCollection = db.collection('availability');
-}
 
 async function loadTypes() {
   if (!typesCollection) return;
@@ -685,4 +677,5 @@ async function initializeAdmin() {
 initializeAdmin();
 
 // End of combined admin.js
+
 
