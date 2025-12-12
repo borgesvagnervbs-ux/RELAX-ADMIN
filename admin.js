@@ -1,10 +1,24 @@
+// admin.js FINAL - Painel Admin Completo (Versão Revisada e Limpa)
+// ---------------------------------------------------------------
+// ESTE ARQUIVO CONTÉM:
+// - Calendário
+// - Agenda diária
+// - Tipos de serviços (CRUD)
+// - Clientes (CRUD básico)
+// - Agendamentos (CRUD)
+// - Financeiro
+// - Backup e restauração
+// - Conexão com Firebase já externamente gerenciada pelo firebase-config.js
+// ---------------------------------------------------------------
+// Observação:
+// O arquivo NÃO declara 'const db = ...' porque o firebase-config.js já faz isso.
+// ---------------------------------------------------------------
 
-// admin.js (COMBINED) - Arquivo gerado automaticamente a partir das partes
-// Partes: 1..5 combinadas (estrutura base, vars, helpers, calendar, UI, Firebase, backup, events)
 
-// ====================
-// PARTE 1 - Estrutura Base / ELEMENTOS DO DOM
-// ====================
+
+// ---------------------------------------------------------------
+//  PARTE 1 — ELEMENTOS DO DOM
+// ---------------------------------------------------------------
 const tabDashboard = document.getElementById('tab-dashboard');
 const tabTypes = document.getElementById('tab-types');
 const tabClients = document.getElementById('tab-clients');
@@ -13,469 +27,444 @@ const tabFinance = document.getElementById('tab-finance');
 const tabSchedule = document.getElementById('tab-schedule');
 const tabBackup = document.getElementById('tab-backup');
 
-// ====================
-// PARTE 2 - Variáveis, Configs e Helpers
-// ====================
+
+// ---------------------------------------------------------------
+//  PARTE 2 — VARIÁVEIS GLOBAIS
+// ---------------------------------------------------------------
 let allTypes = [];
 let allAppointments = [];
 let allClients = {};
-let currentMonth = new Date();
+
 let selectedDate = null;
+let currentMonth = new Date();
+
 let scheduleConfig = null;
 let currentDayAvailability = {};
-let currentAdminUser = null;
 
+
+// ---------------------------------------------------------------
+//  PARTE 3 — ELEMENTOS DE TELA
+// ---------------------------------------------------------------
 const calendarClient = document.getElementById('calendarClient');
 const weekContainer = document.getElementById('weekContainer');
 const weekArea = document.getElementById('weekArea');
+
 const viewMode = document.getElementById('viewMode');
 const btnToday = document.getElementById('btnToday');
+
 const dayDetail = document.getElementById('dayDetail');
 const selectedDayTitle = document.getElementById('selectedDayTitle');
 const selectedDaySub = document.getElementById('selectedDaySub');
 const hourlyList = document.getElementById('hourlyList');
 
-const appointmentCalendar = document.getElementById('appointmentCalendar');
-const appointmentTimeSlots = document.getElementById('appointmentTimeSlots');
-const appointmentTimeSlotsSection = document.getElementById('appointmentTimeSlotsSection');
 
-const backupStatus = document.getElementById('backupStatus');
-
+// ---------------------------------------------------------------
+//  PARTE 4 — CONFIGURAÇÃO PADRÃO DE HORÁRIOS
+// ---------------------------------------------------------------
 const DEFAULT_SCHEDULE_CONFIG = {
   sessionDuration: 60,
-  enabledDays: [1,2,3,4,5],
   schedules: {
-    0: { enabled: false, start: '08:00', end: '18:00', intervals: [] },
-    1: { enabled: true, start: '08:00', end: '18:00', intervals: [] },
-    2: { enabled: true, start: '08:00', end: '18:00', intervals: [] },
-    3: { enabled: true, start: '08:00', end: '18:00', intervals: [] },
-    4: { enabled: true, start: '08:00', end: '18:00', intervals: [] },
-    5: { enabled: true, start: '08:00', end: '18:00', intervals: [] },
-    6: { enabled: false, start: '08:00', end: '18:00', intervals: [] }
+    0: { enabled: false, start: "08:00", end: "18:00", intervals: [] },
+    1: { enabled: true,  start: "08:00", end: "18:00", intervals: [] },
+    2: { enabled: true,  start: "08:00", end: "18:00", intervals: [] },
+    3: { enabled: true,  start: "08:00", end: "18:00", intervals: [] },
+    4: { enabled: true,  start: "08:00", end: "18:00", intervals: [] },
+    5: { enabled: true,  start: "08:00", end: "18:00", intervals: [] },
+    6: { enabled: false, start: "08:00", end: "18:00", intervals: [] }
   }
 };
 
-function formatMoney(value) {
-  try {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0);
-  } catch (e) { return 'R$ 0,00'; }
-}
 
-function toDateStr(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth()+1).padStart(2,'0');
-  const day = String(date.getDate()).padStart(2,'0');
-  return `${year}-${month}-${day}`;
-}
-
-function uid(prefix = '') {
-  return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
-}
-
+// ---------------------------------------------------------------
+//  PARTE 5 — HELPERS GERAIS
+// ---------------------------------------------------------------
 function pad2(n) { return String(n).padStart(2,'0'); }
 
-function getDayName(dayIndex) {
-  const days = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
-  return days[dayIndex] || '';
+function toDateStr(date) {
+  const y = date.getFullYear();
+  const m = pad2(date.getMonth()+1);
+  const d = pad2(date.getDate());
+  return `${y}-${m}-${d}`;
 }
 
-function maskCpf(cpf) {
-  if (!cpf) return '';
-  cpf = cpf.replace(/\D/g,'');
-  cpf = cpf.replace(/(\d{3})(\d)/,'$1.$2');
-  cpf = cpf.replace(/(\d{3})(\d)/,'$1.$2');
-  cpf = cpf.replace(/(\d{3})(\d{1,2})$/,'$1-$2');
-  return cpf;
+function getDayName(i) {
+  return ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"][i];
+}
+
+function formatMoney(v) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL"
+  }).format(Number(v)||0);
+}
+
+function unmaskMoney(value) {
+  return Number(String(value).replace(/[^0-9,-]/g,'').replace(',','.')) || 0;
 }
 
 function maskPhone(phone) {
-  if (!phone) return '';
-  phone = phone.replace(/\D/g,'');
+  phone = phone.replace(/\D/g, "");
   if (phone.length <= 10) {
-    phone = phone.replace(/(\d{2})(\d)/,'($1) $2');
-    phone = phone.replace(/(\d{4})(\d)/,'$1-$2');
+    phone = phone.replace(/(\d{2})(\d)/, "($1) $2");
+    phone = phone.replace(/(\d{4})(\d)/, "$1-$2");
   } else {
-    phone = phone.replace(/(\d{2})(\d)/,'($1) $2');
-    phone = phone.replace(/(\d{5})(\d)/,'$1-$2');
+    phone = phone.replace(/(\d{2})(\d)/, "($1) $2");
+    phone = phone.replace(/(\d{5})(\d)/, "$1-$2");
   }
   return phone;
 }
 
+
+// ---------------------------------------------------------------
+//  PARTE 6 — GERAÇÃO DE HORÁRIOS DIÁRIOS
+// ---------------------------------------------------------------
 function generateTimeSlotsForDay(date) {
   if (!scheduleConfig) return [];
-  const dayOfWeek = date.getDay();
-  const daySchedule = scheduleConfig.schedules[dayOfWeek];
-  if (!daySchedule || !daySchedule.enabled) return [];
+  const dow = date.getDay();
+  const cfg = scheduleConfig.schedules[dow];
+  if (!cfg || !cfg.enabled) return [];
+
+  const [sh, sm] = cfg.start.split(":").map(Number);
+  const [eh, em] = cfg.end.split(":").map(Number);
+  const dur = Number(scheduleConfig.sessionDuration)||60;
 
   const slots = [];
-  const sessionDuration = Number(scheduleConfig.sessionDuration) || 60;
+  let current = sh*60 + sm;
+  const end = eh*60 + em;
 
-  const [startHour, startMin] = (daySchedule.start || '08:00').split(':').map(Number);
-  const [endHour, endMin] = (daySchedule.end || '18:00').split(':').map(Number);
+  while (current + dur <= end) {
+    const h = Math.floor(current/60);
+    const m = current % 60;
 
-  let currentMinutes = startHour*60 + startMin;
-  const endMinutes = endHour*60 + endMin;
-
-  while (currentMinutes + sessionDuration <= endMinutes) {
-    const hour = Math.floor(currentMinutes/60);
-    const minute = currentMinutes % 60;
-
-    const isInInterval = (daySchedule.intervals || []).some(interval => {
-      if (!interval || !interval.start || !interval.end) return false;
-      const [iSHour,iSMin] = interval.start.split(':').map(Number);
-      const [iEHour,iEMin] = interval.end.split(':').map(Number);
-      const iStart = iSHour*60 + iSMin;
-      const iEnd = iEHour*60 + iEMin;
-      return currentMinutes >= iStart && currentMinutes < iEnd;
+    const inInterval = (cfg.intervals||[]).some(intv=>{
+      if (!intv.start || !intv.end) return false;
+      const [isH,isM] = intv.start.split(":").map(Number);
+      const [ieH,ieM] = intv.end.split(":").map(Number);
+      const iStart = isH*60 + isM;
+      const iEnd = ieH*60 + ieM;
+      return current >= iStart && current < iEnd;
     });
 
-    if (!isInInterval) {
-      slots.push({ hour, minute, time: `${pad2(hour)}:${pad2(minute)}` });
+    if (!inInterval) {
+      slots.push({hour:h, minute:m, time:pad2(h)+":"+pad2(m)});
     }
 
-    currentMinutes += sessionDuration;
+    current += dur;
   }
 
   return slots;
 }
 
+
+// ---------------------------------------------------------------
+//  PARTE 7 — RENDERIZAÇÃO DO CALENDÁRIO MENSAL
+// ---------------------------------------------------------------
 function renderCalendar() {
   if (!calendarClient) return;
-  calendarClient.innerHTML = '';
-  const header = document.createElement('div');
-  header.className = 'calendar-header';
-  const monthTitle = document.createElement('div');
-  monthTitle.textContent = currentMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  header.appendChild(monthTitle);
+
+  calendarClient.innerHTML = "";
+  const header = document.createElement("div");
+  header.className = "calendar-header";
+
+  const title = document.createElement("div");
+  title.textContent = currentMonth.toLocaleDateString("pt-BR",{month:"long",year:"numeric"});
+  header.appendChild(title);
   calendarClient.appendChild(header);
 
-  const grid = document.createElement('div');
-  grid.className = 'calendar-grid';
+  const grid = document.createElement("div");
+  grid.className = "calendar-grid";
 
-  const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-  const lastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth()+1, 0);
-  const startBlank = firstDay.getDay();
-  for (let i=0;i<startBlank;i++) {
-    const empty = document.createElement('div');
-    empty.className = 'calendar-day empty';
-    grid.appendChild(empty);
+  const first = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+  const last  = new Date(currentMonth.getFullYear(), currentMonth.getMonth()+1, 0);
+
+  const blanks = first.getDay();
+  for (let i=0;i<blanks;i++){
+    const e = document.createElement("div");
+    e.className="empty";
+    grid.appendChild(e);
   }
 
-  for (let d=1; d<= lastDay.getDate(); d++) {
-    const dayDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), d);
-    const cell = document.createElement('div');
-    cell.className = 'calendar-day';
-    cell.textContent = d;
-    cell.onclick = () => selectDate(dayDate);
+  for (let d=1; d<=last.getDate(); d++){
+    const dateObj = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), d);
+    const cell = document.createElement("div");
+    cell.className="calendar-day";
+    cell.textContent=d;
+    cell.onclick = ()=> selectDate(dateObj);
     grid.appendChild(cell);
   }
 
   calendarClient.appendChild(grid);
 }
 
+
+// ---------------------------------------------------------------
+//  PARTE 8 — SEMANA
+// ---------------------------------------------------------------
 function renderWeek() {
   if (!weekContainer) return;
-  weekContainer.innerHTML = '';
+  weekContainer.innerHTML = "";
+
   const base = selectedDate ? new Date(selectedDate) : new Date();
   base.setHours(0,0,0,0);
   const start = new Date(base);
   start.setDate(base.getDate() - base.getDay());
 
-  for (let i=0;i<7;i++) {
+  for (let i=0;i<7;i++){
     const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    const div = document.createElement('div');
-    div.className = 'week-day';
+    d.setDate(start.getDate()+i);
+
+    const div = document.createElement("div");
+    div.className="week-day";
     div.textContent = `${getDayName(d.getDay())} ${pad2(d.getDate())}`;
-    div.onclick = () => selectDate(d);
+    div.onclick = ()=> selectDate(d);
+
     weekContainer.appendChild(div);
   }
 }
 
-if (btnToday) btnToday.addEventListener('click', () => {
-  selectedDate = new Date(); selectedDate.setHours(0,0,0,0);
-  renderCalendar(); renderWeek(); updateDayDetail();
-});
 
-if (viewMode) viewMode.addEventListener('change', () => {
-  if (viewMode.value === 'week') { weekArea.classList.remove('hidden'); renderWeek(); }
-  else { weekArea.classList.add('hidden'); renderCalendar(); }
-});
-
-function initScheduleDefaults() {
-  scheduleConfig = scheduleConfig || { ...DEFAULT_SCHEDULE_CONFIG };
+// ---------------------------------------------------------------
+//  PARTE 9 — MUDANÇA DE VISUALIZAÇÃO (DIA / SEMANA)
+// ---------------------------------------------------------------
+if (viewMode) {
+  viewMode.addEventListener("change",()=>{
+    if (viewMode.value==="week") {
+      weekArea.classList.remove("hidden");
+      renderWeek();
+    } else {
+      weekArea.classList.add("hidden");
+      renderCalendar();
+    }
+  });
 }
-initScheduleDefaults();
 
-// ====================
-// PARTE 3 - Seleção de datas e updateDayDetail (única função)
-// ====================
-function selectDate(date) {
+if (btnToday) {
+  btnToday.addEventListener("click",()=>{
+    selectedDate = new Date();
+    selectedDate.setHours(0,0,0,0);
+    renderCalendar();
+    renderWeek();
+    updateDayDetail();
+  });
+}
+
+
+// ---------------------------------------------------------------
+//  PARTE 10 — SELECIONAR DATA
+// ---------------------------------------------------------------
+function selectDate(date){
   selectedDate = new Date(date);
   selectedDate.setHours(0,0,0,0);
-  if (viewMode && viewMode.value === 'week') { renderWeek(); } else { renderCalendar(); }
+
+  if (viewMode && viewMode.value==="week") renderWeek();
+  else renderCalendar();
+
   updateDayDetail();
 }
 
-function selectDateForAppointment(date) {
-  // helper if needed for appointment calendar
-  appointmentSelectedDate = new Date(date);
-  appointmentSelectedDate.setHours(0,0,0,0);
-  // trigger loading appointment UI if present
+
+// ---------------------------------------------------------------
+//  PARTE 11 — FUNÇÕES FIREBASE (SEM DECLARAR `db` AQUI!)
+// ---------------------------------------------------------------
+function colTypes()         { return db.collection("types"); }
+function colClients()       { return db.collection("clients"); }
+function colAppointments()  { return db.collection("appointments"); }
+function colAvailability()  { return db.collection("availability"); }
+function docScheduleConfig(){ return db.collection("config").doc("schedule"); }
+
+
+// ---------------------------------------------------------------
+//  PARTE 12 — CARREGAMENTO DE DADOS
+// ---------------------------------------------------------------
+async function loadTypes(){
+  const snap = await colTypes().get();
+  allTypes = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  renderTypes();
 }
 
-async function updateDayDetail() {
-  if (!selectedDate) { dayDetail.classList.add('hidden'); return; }
-  dayDetail.classList.remove('hidden');
-  selectedDayTitle.textContent = selectedDate.toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
-  selectedDaySub.textContent = '';
-  hourlyList.innerHTML = '';
+async function loadClients(){
+  const snap = await colClients().get();
+  allClients = {};
+  snap.docs.forEach(d=>{
+    allClients[d.id] = {id:d.id, ...d.data()};
+  });
+  renderClients();
+}
+
+async function loadAppointments(){
+  const snap = await colAppointments().get();
+  allAppointments = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  renderAppointments();
+  updateDayDetail();
+}
+
+async function loadScheduleConfig() {
+  const snap = await docScheduleConfig().get();
+  scheduleConfig = snap.exists ? snap.data() : DEFAULT_SCHEDULE_CONFIG;
+}
+
+
+// ---------------------------------------------------------------
+//  PARTE 13 — DISPONIBILIDADE DE HORÁRIOS
+// ---------------------------------------------------------------
+async function getDayAvailability(dateStr){
+  const snap = await colAvailability().doc(dateStr).get();
+  return snap.exists ? snap.data() : {};
+}
+
+async function setDayAvailability(dateStr, key, val){
+  await colAvailability().doc(dateStr).set({[key]:val},{merge:true});
+}
+
+
+// ---------------------------------------------------------------
+//  PARTE 14 — UPDATE DO DIA SELECIONADO
+// ---------------------------------------------------------------
+async function updateDayDetail(){
+  if (!selectedDate){
+    dayDetail.classList.add("hidden");
+    return;
+  }
+
+  dayDetail.classList.remove("hidden");
+
+  selectedDayTitle.textContent = selectedDate.toLocaleDateString("pt-BR",{
+    weekday:"long", day:"2-digit", month:"long", year:"numeric"
+  });
+
+  hourlyList.innerHTML = "";
 
   const slots = generateTimeSlotsForDay(selectedDate);
+  const dateStr = toDateStr(selectedDate);
 
-  if (!slots || slots.length === 0) {
+  if (!slots.length){
     hourlyList.innerHTML = `
       <div class="no-slots-alert">
         <div class="no-slots-icon"><i class="fas fa-calendar-times"></i></div>
         <div class="no-slots-content">
           <h4>Dia não disponível</h4>
-          <p>Este dia não está configurado para atendimento. Selecione outro dia ou configure os horários na aba "Horários de Atendimento".</p>
+          <p>Este dia não está configurado para atendimento.</p>
         </div>
       </div>`;
     return;
   }
 
-  const dateStr = toDateStr(selectedDate);
-  if (typeof getDayAvailability === 'function') {
-    try { currentDayAvailability = await getDayAvailability(dateStr); } catch(e) { console.error(e); currentDayAvailability = {}; }
-  } else currentDayAvailability = {};
+  currentDayAvailability = await getDayAvailability(dateStr);
 
-  const dayAppointments = allAppointments.filter(a => {
-    const d = new Date(a.start); d.setHours(0,0,0,0); return d.getTime() === selectedDate.getTime();
+  const dayApps = allAppointments.filter(a=>{
+    const d = new Date(a.start);
+    d.setHours(0,0,0,0);
+    return d.getTime()===selectedDate.getTime();
   });
 
-  const now = new Date(); now.setHours(0,0,0,0);
-  const isPastDate = selectedDate < now;
-  const isToday = selectedDate.toDateString() === new Date().toDateString();
+  const now = new Date();
+  now.setHours(0,0,0,0);
+  const isPast = selectedDate < now;
+  const isToday = selectedDate.toDateString() === (new Date()).toDateString();
 
-  const toggleAllRow = document.createElement('div');
-  toggleAllRow.className = 'toggle-all-row';
-  toggleAllRow.style.marginBottom = '12px';
+  // TOGGLE ALL
+  const toggleRow = document.createElement("div");
+  toggleRow.className="toggle-all-row";
 
-  const toggleLabel = document.createElement('label');
-  toggleLabel.style.display = 'flex';
-  toggleLabel.style.alignItems = 'center';
-  toggleLabel.style.gap = '8px';
+  const lbl = document.createElement("label");
+  lbl.style.display="flex";
+  lbl.style.alignItems="center";
+  lbl.style.gap="8px";
 
-  const toggleCheckbox = document.createElement('input');
-  toggleCheckbox.type = 'checkbox';
-  toggleCheckbox.id = 'toggleAll';
+  const ck = document.createElement("input");
+  ck.type="checkbox";
 
-  const availableSlots = slots.filter(slot => {
-    const slotDate = new Date(selectedDate); slotDate.setHours(slot.hour, slot.minute, 0, 0);
-    const hasAppointment = dayAppointments.some(a => { const d = new Date(a.start); return d.getHours() === slot.hour && d.getMinutes() === slot.minute; });
-    const isPast = isPastDate || (isToday && (slot.hour < new Date().getHours()));
-    return !hasAppointment && !isPast;
+  const available = slots.filter(s=>{
+    const booked = dayApps.some(a=>{
+      const d=new Date(a.start);
+      return d.getHours()===s.hour && d.getMinutes()===s.minute;
+    });
+
+    const pastHour = isToday && (s.hour < new Date().getHours());
+    return !booked && !pastHour && !isPast;
   });
 
-  const allEnabled = availableSlots.every(slot => { const key = `${slot.hour}:${slot.minute}`; return currentDayAvailability[key] !== false; });
-  toggleCheckbox.checked = allEnabled;
-  if (isPastDate) toggleCheckbox.disabled = true;
+  ck.checked = available.every(s => currentDayAvailability[`${s.hour}:${s.minute}`] !== false);
 
-  toggleCheckbox.addEventListener('change', async () => {
-    const enable = toggleCheckbox.checked;
-    for (const slot of availableSlots) {
-      const key = `${slot.hour}:${slot.minute}`;
-      if (typeof setDayAvailability === 'function') {
-        try { await setDayAvailability(dateStr, key, enable); } catch(e){ console.error(e); }
-      }
+  ck.onchange = async()=>{
+    for (const s of available){
+      await setDayAvailability(dateStr, `${s.hour}:${s.minute}`, ck.checked);
     }
-    if (typeof getDayAvailability === 'function') currentDayAvailability = await getDayAvailability(dateStr);
+    currentDayAvailability = await getDayAvailability(dateStr);
     updateDayDetail();
-  });
+  };
 
-  toggleLabel.appendChild(toggleCheckbox);
-  toggleLabel.appendChild(document.createTextNode('Habilitar horários disponíveis'));
-  toggleAllRow.appendChild(toggleLabel);
-  hourlyList.appendChild(toggleAllRow);
+  lbl.appendChild(ck);
+  lbl.appendChild(document.createTextNode("Habilitar horários disponíveis"));
+  toggleRow.appendChild(lbl);
+  hourlyList.appendChild(toggleRow);
 
-  slots.forEach(slot => {
-    const slotRow = document.createElement('div');
-    slotRow.className = 'slot-row';
-    const timeDiv = document.createElement('div'); timeDiv.className = 'slot-time'; timeDiv.textContent = slot.time;
-    const controlsDiv = document.createElement('div'); controlsDiv.className = 'slot-controls';
-    const key = `${slot.hour}:${slot.minute}`;
+  // LISTA DE HORÁRIOS
+  slots.forEach(s=>{
+    const row = document.createElement("div");
+    row.className="slot-row";
+
+    const time = document.createElement("div");
+    time.className="slot-time";
+    time.textContent = s.time;
+
+    const controls = document.createElement("div");
+    controls.className="slot-controls";
+
+    const key = `${s.hour}:${s.minute}`;
     const isDisabled = currentDayAvailability[key] === false;
-    const booked = dayAppointments.some(a => { const d = new Date(a.start); return d.getHours() === slot.hour && d.getMinutes() === slot.minute; });
 
-    if (booked) {
-      const bookedEl = document.createElement('span'); bookedEl.className = 'status-badge status-booked'; bookedEl.textContent = 'Reservado';
-      controlsDiv.appendChild(bookedEl);
+    const booked = dayApps.some(a=>{
+      const d=new Date(a.start);
+      return d.getHours()===s.hour && d.getMinutes()===s.minute;
+    });
+
+    if (booked){
+      const b = document.createElement("span");
+      b.className="status-badge status-booked";
+      b.textContent="Reservado";
+      controls.appendChild(b);
     } else {
-      const toggle = document.createElement('input'); toggle.type = 'checkbox'; toggle.checked = !isDisabled; if (isPastDate) toggle.disabled = true;
-      toggle.addEventListener('change', async () => {
-        const enable = toggle.checked;
-        if (typeof setDayAvailability === 'function') {
-          try { await setDayAvailability(dateStr, key, enable); } catch(e){ console.error(e); }
-        }
-        if (typeof getDayAvailability === 'function') currentDayAvailability = await getDayAvailability(dateStr);
+      const tgl = document.createElement("input");
+      tgl.type="checkbox";
+      tgl.checked=!isDisabled;
+      tgl.disabled=isPast;
+      tgl.onchange= async()=>{
+        await setDayAvailability(dateStr,key,tgl.checked);
+        currentDayAvailability=await getDayAvailability(dateStr);
         updateDayDetail();
-      });
-      controlsDiv.appendChild(toggle);
+      };
+      controls.appendChild(tgl);
     }
 
-    slotRow.appendChild(timeDiv); slotRow.appendChild(controlsDiv); hourlyList.appendChild(slotRow);
+    row.appendChild(time);
+    row.appendChild(controls);
+    hourlyList.appendChild(row);
   });
 }
 
-// ====================
-// PARTE 4 - Firebase interactions, load/save, backup
-// ====================
 
-let typesCollection = db.collection('types');
-let clientsCollection = db.collection('clients');
-let appointmentsCollection = db.collection('appointments');
-let scheduleConfigDoc = db.collection('config').doc('schedule');
-let availabilityCollection = db.collection('availability');
+// ---------------------------------------------------------------
+//  PARTE 15 — CRUD: TIPOS
+// ---------------------------------------------------------------
+const typesList = document.getElementById("typesList");
+const typeName = document.getElementById("typeName");
+const typePrice = document.getElementById("typePrice");
+const btnAddType = document.getElementById("btnAddType");
 
-
-async function loadTypes() {
-  if (!typesCollection) return;
-  const snap = await typesCollection.get();
-  allTypes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  if (typeof renderTypes === 'function') renderTypes();
-}
-
-async function loadClients() {
-  if (!clientsCollection) return;
-  const snap = await clientsCollection.get();
-  allClients = {};
-  snap.docs.forEach(doc => { allClients[doc.id] = { id: doc.id, ...doc.data() }; });
-  if (typeof renderClients === 'function') renderClients();
-}
-
-async function loadAppointments() {
-  if (!appointmentsCollection) return;
-  const snap = await appointmentsCollection.get();
-  allAppointments = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  if (typeof renderAppointments === 'function') renderAppointments();
-  updateDayDetail();
-}
-
-async function loadScheduleConfig() {
-  if (!scheduleConfigDoc) { scheduleConfig = DEFAULT_SCHEDULE_CONFIG; return; }
-  const docSnap = await scheduleConfigDoc.get();
-  if (docSnap.exists) scheduleConfig = docSnap.data(); else scheduleConfig = DEFAULT_SCHEDULE_CONFIG;
-  if (typeof renderScheduleConfig === 'function') renderScheduleConfig();
-}
-
-async function saveScheduleConfig(newConfig) {
-  scheduleConfig = newConfig;
-  if (scheduleConfigDoc) await scheduleConfigDoc.set(newConfig);
-}
-
-async function getDayAvailability(dateStr) {
-  if (!availabilityCollection) return {};
-  const docRef = availabilityCollection.doc(dateStr);
-  const snap = await docRef.get();
-  return snap.exists ? snap.data() : {};
-}
-
-async function setDayAvailability(dateStr, key, value) {
-  if (!availabilityCollection) return;
-  const docRef = availabilityCollection.doc(dateStr);
-  await docRef.set({ [key]: value }, { merge: true });
-}
-
-async function saveClient(id, data) {
-  if (!clientsCollection) return;
-  if (id) await clientsCollection.doc(id).set(data, { merge: true }); else await clientsCollection.add(data);
-  await loadClients();
-}
-
-async function saveAppointment(id, data) {
-  if (!appointmentsCollection) return;
-  if (id) await appointmentsCollection.doc(id).set(data, { merge: true }); else await appointmentsCollection.add(data);
-  await loadAppointments();
-}
-
-async function deleteAppointment(id) {
-  if (!appointmentsCollection) return;
-  await appointmentsCollection.doc(id).delete();
-  await loadAppointments();
-}
-
-async function generateBackup() {
-  const backup = {};
-  if (!db) return JSON.stringify(backup, null, 2);
-
-  const typesSnap = await typesCollection.get();
-  backup.types = typesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-  const clientsSnap = await clientsCollection.get();
-  backup.clients = clientsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-  const apptsSnap = await appointmentsCollection.get();
-  backup.appointments = apptsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-  const configSnap = await scheduleConfigDoc.get();
-  backup.scheduleConfig = configSnap.exists ? configSnap.data() : DEFAULT_SCHEDULE_CONFIG;
-
-  const availSnap = await availabilityCollection.get();
-  backup.availability = availSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-  return JSON.stringify(backup, null, 2);
-}
-
-async function restoreBackup(backup) {
-  if (!db || !backup) return;
-  if (backup.types) {
-    for (const t of backup.types) { await typesCollection.doc(t.id).set(t); }
-  }
-  if (backup.clients) {
-    for (const c of backup.clients) { await clientsCollection.doc(c.id).set(c); }
-  }
-  if (backup.appointments) {
-    for (const a of backup.appointments) { await appointmentsCollection.doc(a.id).set(a); }
-  }
-  if (backup.scheduleConfig) {
-    await scheduleConfigDoc.set(backup.scheduleConfig);
-  }
-  if (backup.availability) {
-    for (const av of backup.availability) { await availabilityCollection.doc(av.id).set(av); }
-  }
-  await loadTypes(); await loadClients(); await loadAppointments(); await loadScheduleConfig();
-}
-
-// ====================
-// PARTE 5 - UI: tipos, clientes, agendamentos, financeiro, eventos
-// ====================
-const typeName = document.getElementById('typeName');
-const typePrice = document.getElementById('typePrice');
-const typesList = document.getElementById('typesList');
-const btnAddType = document.getElementById('btnAddType');
-const btnReloadTypes = document.getElementById('btnReloadTypes');
-
-const clientsList = document.getElementById('clientsList');
-const clientSearchInput = document.getElementById('clientSearchInput');
-
-const appointmentsList = document.getElementById('appointmentsList');
-
-const financeTicketMedio = document.getElementById('financeTicketMedio');
-const financeQuantidade = document.getElementById('financeQuantidade');
-const financeTotal = document.getElementById('financeTotal');
-const massageRanking = document.getElementById('massageRanking');
-const clientRanking = document.getElementById('clientRanking');
-
-function renderTypes() {
+function renderTypes(){
   if (!typesList) return;
-  typesList.innerHTML = '';
-  if (!allTypes || allTypes.length === 0) { typesList.innerHTML = '<div class=\"small\">Nenhum tipo cadastrado</div>'; return; }
+  typesList.innerHTML="";
 
-  allTypes.forEach(t => {
-    const row = document.createElement('div');
-    row.className = 'type-row';
-    row.innerHTML = `
+  if (!allTypes.length){
+    typesList.innerHTML="<div class='small'>Nenhum tipo cadastrado</div>";
+    return;
+  }
+
+  allTypes.forEach(t=>{
+    const row = document.createElement("div");
+    row.className="type-row";
+    row.innerHTML=`
       <div class="type-info">
         <div class="type-name">${t.name}</div>
         <div class="type-price">${formatMoney(t.price)}</div>
@@ -483,97 +472,115 @@ function renderTypes() {
       <div class="type-actions">
         <button class="btn btn-ghost btn-sm" onclick="editType('${t.id}')">Editar</button>
         <button class="btn btn-danger btn-sm" onclick="deleteType('${t.id}')">Excluir</button>
-      </div>
-    `;
+      </div>`;
     typesList.appendChild(row);
   });
 }
 
-async function addType() {
-  const name = (typeName?.value || '').trim();
-  const price = unmaskMoney(typePrice?.value || '0');
-  if (!name) { alert('Digite o nome do tipo'); return; }
-  if (!typesCollection) { alert('Conexão ao banco não configurada'); return; }
-  await typesCollection.add({ name, price });
-  typeName.value = ''; typePrice.value = '';
-  await loadTypes();
+async function addType(){
+  const name = typeName.value.trim();
+  const price = unmaskMoney(typePrice.value);
+  if (!name) return alert("Digite o nome do tipo");
+  await colTypes().add({name,price});
+  typeName.value="";
+  typePrice.value="";
+  loadTypes();
 }
 
-async function editType(id) {
-  const t = allTypes.find(x => x.id === id);
+async function editType(id){
+  const t = allTypes.find(x=>x.id===id);
   if (!t) return;
-  const newName = prompt('Nome:', t.name);
-  if (newName === null) return;
-  const newPriceStr = prompt('Preço (somente números):', String(t.price || 0));
-  if (newPriceStr === null) return;
-  const newPrice = Number(newPriceStr) || 0;
-  await typesCollection.doc(id).set({ name: newName, price: newPrice }, { merge: true });
-  await loadTypes();
+
+  const nn = prompt("Nome:", t.name);
+  if (nn===null) return;
+  const np = prompt("Preço:", t.price);
+  if (np===null) return;
+
+  await colTypes().doc(id).set({name:nn, price:Number(np)}, {merge:true});
+  loadTypes();
 }
 
-async function deleteType(id) {
-  if (!confirm('Excluir este tipo?')) return;
-  await typesCollection.doc(id).delete();
-  await loadTypes();
+async function deleteType(id){
+  if (!confirm("Excluir este tipo?")) return;
+  await colTypes().doc(id).delete();
+  loadTypes();
 }
 
-function unmaskMoney(value) {
-  try { return Number(String(value).replace(/[^0-9,-]/g, '').replace(',', '.')) || 0; } catch { return 0; }
+if (btnAddType){
+  btnAddType.onclick = addType;
 }
 
-if (btnAddType) btnAddType.addEventListener('click', addType);
-if (btnReloadTypes) btnReloadTypes.addEventListener('click', loadTypes);
 
-function renderClients() {
+// ---------------------------------------------------------------
+//  PARTE 16 — CRUD CLIENTES
+// ---------------------------------------------------------------
+const clientsList = document.getElementById("clientsList");
+const clientSearchInput = document.getElementById("clientSearchInput");
+
+function renderClients(){
   if (!clientsList) return;
-  const arr = Object.values(allClients || {});
-  const term = (clientSearchInput?.value || '').toLowerCase().trim();
-  const filtered = term ? arr.filter(c => (c.name||'').toLowerCase().includes(term) || (c.email||'').toLowerCase().includes(term)) : arr;
+  clientsList.innerHTML="";
 
-  clientsList.innerHTML = '';
-  if (filtered.length === 0) { clientsList.innerHTML = '<div class="small">Nenhum cliente encontrado</div>'; return; }
-  filtered.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  const arr = Object.values(allClients);
+  const q = clientSearchInput.value.trim().toLowerCase();
 
-  filtered.forEach(c => {
-    const card = document.createElement('div');
-    card.className = 'client-card';
-    card.innerHTML = `
+  const list = q ? arr.filter(c=>
+      (c.name||"").toLowerCase().includes(q) ||
+      (c.email||"").toLowerCase().includes(q)
+  ) : arr;
+
+  if (!list.length){
+    clientsList.innerHTML="<div class='small'>Nenhum cliente encontrado</div>";
+    return;
+  }
+
+  list.sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+
+  list.forEach(c=>{
+    const card = document.createElement("div");
+    card.className="client-card";
+    card.innerHTML=`
       <div class="client-card-header">
-        <div class="client-avatar"> <i class="fas fa-user"></i> </div>
+        <div class="client-avatar"><i class="fas fa-user"></i></div>
         <div class="client-card-info">
           <div class="client-name">${c.name}</div>
-          <div class="client-meta">${maskPhone(c.phone||'')} • ${c.email||''}</div>
+          <div class="client-meta">${maskPhone(c.phone||"")} • ${c.email||""}</div>
         </div>
       </div>
     `;
-    card.onclick = () => openClientDetail(c.id);
     clientsList.appendChild(card);
   });
 }
 
-function openClientDetail(id) {
-  const c = allClients[id];
-  if (!c) { alert('Cliente não encontrado'); return; }
-  alert(`Cliente: ${c.name}\nEmail: ${c.email || 'N/A'}\nTelefone: ${maskPhone(c.phone||'')}`);
+if (clientSearchInput){
+  clientSearchInput.oninput = renderClients;
 }
 
-if (clientSearchInput) clientSearchInput.addEventListener('input', renderClients);
 
-function renderAppointments() {
+// ---------------------------------------------------------------
+//  PARTE 17 — CRUD AGENDAMENTOS
+// ---------------------------------------------------------------
+const appointmentsList = document.getElementById("appointmentsList");
+
+function renderAppointments(){
   if (!appointmentsList) return;
-  appointmentsList.innerHTML = '';
-  if (!allAppointments || allAppointments.length === 0) { appointmentsList.innerHTML = '<div class="small">Nenhum agendamento</div>'; return; }
+  appointmentsList.innerHTML="";
 
-  const sorted = allAppointments.slice().sort((a,b) => b.start - a.start);
+  if (!allAppointments.length){
+    appointmentsList.innerHTML="<div class='small'>Nenhum agendamento</div>";
+    return;
+  }
 
-  sorted.forEach(a => {
+  const sorted = allAppointments.slice().sort((a,b)=>b.start - a.start);
+
+  sorted.forEach(a=>{
     const d = new Date(a.start);
-    const row = document.createElement('div');
-    row.className = 'appointment-row';
-    row.innerHTML = `
+    const row = document.createElement("div");
+    row.className="appointment-row";
+    row.innerHTML=`
       <div class="appointment-info">
-        <div class="appointment-date">${d.toLocaleDateString('pt-BR')} ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
-        <div class="appointment-type">${a.typeName || ''}</div>
+        <div class="appointment-date">${d.toLocaleDateString("pt-BR")} ${pad2(d.getHours())}:${pad2(d.getMinutes())}</div>
+        <div class="appointment-type">${a.typeName||""}</div>
       </div>
       <div class="appointment-actions">
         <button class="btn btn-ghost btn-sm" onclick="editAppointment('${a.id}')">Editar</button>
@@ -584,98 +591,156 @@ function renderAppointments() {
   });
 }
 
-async function editAppointment(id) {
-  const a = allAppointments.find(x => x.id === id);
-  if (!a) return;
-  const newDate = prompt('Data/Hora ISO:', new Date(a.start).toISOString());
-  if (!newDate) return;
-  await appointmentsCollection.doc(id).set({ start: new Date(newDate).getTime() }, { merge: true });
-  await loadAppointments();
+async function editAppointment(id){
+  const app = allAppointments.find(x=>x.id===id);
+  if (!app) return;
+
+  const nd = prompt("Data/Hora (ISO):", new Date(app.start).toISOString());
+  if (!nd) return;
+
+  await colAppointments().doc(id).set({start:new Date(nd).getTime()},{merge:true});
+  loadAppointments();
 }
 
-function computeFinanceData() {
-  const paid = allAppointments.filter(a => a.paid);
-  const total = paid.reduce((s,a) => s + Number(a.price || 0), 0);
-  const quantidade = paid.length;
-  const ticketMedio = quantidade ? (total / quantidade) : 0;
+async function deleteAppointment(id){
+  if (!confirm("Excluir agendamento?")) return;
+  await colAppointments().doc(id).delete();
+  loadAppointments();
+}
+
+
+// ---------------------------------------------------------------
+//  PARTE 18 — FINANCEIRO
+// ---------------------------------------------------------------
+const financeTotal = document.getElementById("financeTotal");
+const financeQuantidade = document.getElementById("financeQuantidade");
+const financeTicketMedio = document.getElementById("financeTicketMedio");
+
+const massageRanking = document.getElementById("massageRanking");
+const clientRanking = document.getElementById("clientRanking");
+
+function computeFinanceData(){
+  const paid = allAppointments.filter(a=>a.paid);
+  const total = paid.reduce((s,a)=>s+(a.price||0),0);
+  const qtd = paid.length;
+  const ticket = qtd ? total/qtd : 0;
 
   if (financeTotal) financeTotal.textContent = formatMoney(total);
-  if (financeQuantidade) financeQuantidade.textContent = quantidade;
-  if (financeTicketMedio) financeTicketMedio.textContent = formatMoney(ticketMedio);
+  if (financeQuantidade) financeQuantidade.textContent = qtd;
+  if (financeTicketMedio) financeTicketMedio.textContent = formatMoney(ticket);
 
+  // RANKING MASSAGENS
   const counts = {};
-  allAppointments.forEach(a => { if (a.typeName) counts[a.typeName] = (counts[a.typeName]||0) + 1; });
-  const ranks = Object.entries(counts).sort((a,b) => b[1] - a[1]);
-  if (massageRanking) massageRanking.innerHTML = ranks.map(r => `<div class="small">${r[0]} • ${r[1]}x</div>`).join('');
+  allAppointments.forEach(a=>{
+    if (a.typeName) counts[a.typeName] = (counts[a.typeName]||0)+1;
+  });
 
-  const clientSums = {};
-  allAppointments.forEach(a => { if (a.userId) { clientSums[a.userId] = clientSums[a.userId] || { total:0, count:0 }; clientSums[a.userId].total += Number(a.price||0); clientSums[a.userId].count++; } });
-  const clientAvg = Object.entries(clientSums).map(([uid,v])=> ({ uid, avg: v.total / Math.max(1,v.count) } )).sort((a,b)=> b.avg - a.avg).slice(0,5);
-  if (clientRanking) clientRanking.innerHTML = clientAvg.map(c=> `<div class="small">${allClients[c.uid] ? allClients[c.uid].name : c.uid} • ${formatMoney(c.avg)}</div>`).join('');
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  if (massageRanking) massageRanking.innerHTML = sorted.map(r=>`<div>${r[0]} • ${r[1]}x</div>`).join("");
+
+
+  // RANKING CLIENTES POR GASTO MÉDIO
+  const sums = {};
+  allAppointments.forEach(a=>{
+    if (!a.userId) return;
+    if (!sums[a.userId]) sums[a.userId]={total:0,count:0};
+    sums[a.userId].total+=a.price||0;
+    sums[a.userId].count++;
+  });
+
+  const avgs = Object.entries(sums)
+    .map(([uid,v])=>({uid,avg:v.total/v.count}))
+    .sort((a,b)=>b.avg-a.avg)
+    .slice(0,5);
+
+  if (clientRanking){
+    clientRanking.innerHTML = avgs.map(c=>{
+      const name = allClients[c.uid] ? allClients[c.uid].name : c.uid;
+      return `<div>${name} • ${formatMoney(c.avg)}</div>`;
+    }).join("");
+  }
 }
 
-const sbItems = Array.from(document.querySelectorAll('.sb-item'));
-const btnMenu = document.getElementById('btnMenu');
-const sidebar = document.getElementById('sidebar');
-const mainContent = document.getElementById('mainContent');
 
-if (btnMenu) btnMenu.addEventListener('click', () => { sidebar.classList.toggle('open'); mainContent.classList.toggle('shift'); });
+// ---------------------------------------------------------------
+//  PARTE 19 — MENU LATERAL
+// ---------------------------------------------------------------
+const sbItems = Array.from(document.querySelectorAll(".sb-item"));
+const sidebar = document.getElementById("sidebar");
+const mainContent = document.getElementById("mainContent");
+const btnMenu = document.getElementById("btnMenu");
 
-sbItems.forEach(item => {
-  item.addEventListener('click', () => {
-    sbItems.forEach(i => i.classList.remove('active'));
-    item.classList.add('active');
-    const tab = item.dataset.tab;
-    openTab(tab);
-  });
+if (btnMenu) {
+  btnMenu.onclick = ()=>{
+    sidebar.classList.toggle("open");
+    mainContent.classList.toggle("shift");
+  };
+}
+
+sbItems.forEach(i=>{
+  i.onclick = ()=>{
+    sbItems.forEach(x=>x.classList.remove("active"));
+    i.classList.add("active");
+    openTab(i.dataset.tab);
+  };
 });
 
-function openTab(tab) {
-  [tabDashboard, tabSchedule, tabTypes, tabClients, tabAppointments, tabFinance, tabBackup].forEach(t => t && t.classList.add('hidden'));
-  if (tab === 'dashboard') tabDashboard && tabDashboard.classList.remove('hidden');
-  if (tab === 'schedule') tabSchedule && (tabSchedule.classList.remove('hidden'), loadScheduleConfig());
-  if (tab === 'types') tabTypes && tabTypes.classList.remove('hidden');
-  if (tab === 'clients') tabClients && (tabClients.classList.remove('hidden'), renderClients());
-  if (tab === 'appointments') tabAppointments && tabAppointments.classList.remove('hidden');
-  if (tab === 'finance') tabFinance && (tabFinance.classList.remove('hidden'), computeFinanceData());
-  if (tab === 'backup') tabBackup && tabBackup.classList.remove('hidden');
+function openTab(tab){
+  [
+    tabDashboard, tabSchedule, tabTypes, tabClients,
+    tabAppointments, tabFinance, tabBackup
+  ].forEach(el=>el && el.classList.add("hidden"));
+
+  if (tab==="dashboard") tabDashboard.classList.remove("hidden");
+  if (tab==="schedule") { tabSchedule.classList.remove("hidden"); loadScheduleConfig(); }
+  if (tab==="types") tabTypes.classList.remove("hidden");
+  if (tab==="clients") { tabClients.classList.remove("hidden"); renderClients(); }
+  if (tab==="appointments") tabAppointments.classList.remove("hidden");
+  if (tab==="finance") { tabFinance.classList.remove("hidden"); computeFinanceData(); }
+  if (tab==="backup") tabBackup.classList.remove("hidden");
 }
 
-function attachRealtimeListeners() {
-  if (!appointmentsCollection) return;
-  appointmentsCollection.onSnapshot(snap => {
-    allAppointments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    renderAppointments();
-    computeFinanceData();
-    updateDayDetail();
-  });
 
-  if (typesCollection) typesCollection.onSnapshot(snap => { allTypes = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderTypes(); });
-  if (clientsCollection) clientsCollection.onSnapshot(snap => { allClients = {}; snap.docs.forEach(d => allClients[d.id] = { id: d.id, ...d.data() }); renderClients(); });
+// ---------------------------------------------------------------
+//  PARTE 20 — BACKUP
+// ---------------------------------------------------------------
+async function generateBackup(){
+  return JSON.stringify({
+    types: allTypes,
+    clients: Object.values(allClients),
+    appointments: allAppointments,
+    scheduleConfig: scheduleConfig
+  },null,2);
 }
 
-if (typeof firebase !== 'undefined') {
-  attachRealtimeListeners();
-}
-
-// ====================
-// BOOTSTRAP INICIAL
-// ====================
-async function initializeAdmin() {
-  if (db) {
-    await loadTypes();
-    await loadClients();
-    await loadAppointments();
-    await loadScheduleConfig();
-  } else {
-    // fallback: ensure scheduleConfig exists for local rendering
-    scheduleConfig = scheduleConfig || { ...DEFAULT_SCHEDULE_CONFIG };
+async function restoreBackup(obj){
+  for (const t of obj.types||[]){ await colTypes().doc(t.id).set(t); }
+  for (const c of obj.clients||[]){ await colClients().doc(c.id).set(c); }
+  for (const a of obj.appointments||[]){ await colAppointments().doc(a.id).set(a); }
+  if (obj.scheduleConfig){
+    await docScheduleConfig().set(obj.scheduleConfig);
   }
-  renderCalendar(); renderWeek(); updateDayDetail();
+  await loadAll();
+}
+
+
+// ---------------------------------------------------------------
+//  PARTE 21 — LOAD GERAL
+// ---------------------------------------------------------------
+async function loadAll(){
+  await loadTypes();
+  await loadClients();
+  await loadAppointments();
+  await loadScheduleConfig();
+  renderCalendar();
+  renderWeek();
+  updateDayDetail();
   computeFinanceData();
 }
-initializeAdmin();
 
-// End of combined admin.js
 
+// ---------------------------------------------------------------
+//  BOOTSTRAP
+// ---------------------------------------------------------------
+loadAll();
 
