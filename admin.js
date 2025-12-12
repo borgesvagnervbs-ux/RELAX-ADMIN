@@ -2004,7 +2004,7 @@ async function loadAppointmentTimeSlots() {
     // SUBSTITUA ESTE BLOCO (primeiro alerta)
     // ALERTA PADRÃO - DIA NÃO DISPONÍVEL
 if (slots.length === 0) {
-  appointmentTimeSlots.innerHTML = `
+  hourlyList.innerHTML = `
     <div class="no-slots-alert">
       <div class="no-slots-icon">
         <i class="fas fa-calendar-times"></i>
@@ -3227,3 +3227,4 @@ window.addEventListener('beforeunload', () => {
   if (unsubscribeAppointments) unsubscribeAppointments();
   if (unsubscribeUsers) unsubscribeUsers();
 });
+
