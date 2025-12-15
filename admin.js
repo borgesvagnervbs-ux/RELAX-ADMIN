@@ -17,7 +17,7 @@
 
 
 // ---------------------------------------------------------------
-//  PARTE 1 — ELEMENTOS DO DOM
+//  PARTE 1 – ELEMENTOS DO DOM
 // ---------------------------------------------------------------
 const tabDashboard = document.getElementById('tab-dashboard');
 const tabTypes = document.getElementById('tab-types');
@@ -29,7 +29,7 @@ const tabBackup = document.getElementById('tab-backup');
 
 
 // ---------------------------------------------------------------
-//  PARTE 2 — VARIÁVEIS GLOBAIS
+//  PARTE 2 – VARIÁVEIS GLOBAIS
 // ---------------------------------------------------------------
 let allTypes = [];
 let allAppointments = [];
@@ -43,7 +43,7 @@ let currentDayAvailability = {};
 
 
 // ---------------------------------------------------------------
-//  PARTE 3 — ELEMENTOS DE TELA
+//  PARTE 3 – ELEMENTOS DE TELA
 // ---------------------------------------------------------------
 const calendarClient = document.getElementById('calendarClient');
 const weekContainer = document.getElementById('weekContainer');
@@ -59,7 +59,7 @@ const hourlyList = document.getElementById('hourlyList');
 
 
 // ---------------------------------------------------------------
-//  PARTE 4 — CONFIGURAÇÃO PADRÃO DE HORÁRIOS
+//  PARTE 4 – CONFIGURAÇÃO PADRÃO DE HORÁRIOS
 // ---------------------------------------------------------------
 const DEFAULT_SCHEDULE_CONFIG = {
   sessionDuration: 60,
@@ -76,7 +76,7 @@ const DEFAULT_SCHEDULE_CONFIG = {
 
 
 // ---------------------------------------------------------------
-//  PARTE 5 — HELPERS GERAIS
+//  PARTE 5 – HELPERS GERAIS
 // ---------------------------------------------------------------
 function pad2(n) { return String(n).padStart(2,'0'); }
 
@@ -116,7 +116,7 @@ function maskPhone(phone) {
 
 
 // ---------------------------------------------------------------
-//  PARTE 6 — GERAÇÃO DE HORÁRIOS DIÁRIOS
+//  PARTE 6 – GERAÇÃO DE HORÁRIOS DIÁRIOS
 // ---------------------------------------------------------------
 function generateTimeSlotsForDay(date) {
   if (!scheduleConfig) return [];
@@ -157,7 +157,7 @@ function generateTimeSlotsForDay(date) {
 
 
 // ---------------------------------------------------------------
-//  PARTE 7 — RENDERIZAÇÃO DO CALENDÁRIO MENSAL
+//  PARTE 7 – RENDERIZAÇÃO DO CALENDÁRIO MENSAL
 // ---------------------------------------------------------------
 function renderCalendar() {
   if (!calendarClient) return;
@@ -198,7 +198,7 @@ function renderCalendar() {
 
 
 // ---------------------------------------------------------------
-//  PARTE 8 — SEMANA
+//  PARTE 8 – SEMANA
 // ---------------------------------------------------------------
 function renderWeek() {
   if (!weekContainer) return;
@@ -224,7 +224,7 @@ function renderWeek() {
 
 
 // ---------------------------------------------------------------
-//  PARTE 9 — MUDANÇA DE VISUALIZAÇÃO (DIA / SEMANA)
+//  PARTE 9 – MUDANÇA DE VISUALIZAÇÃO (DIA / SEMANA)
 // ---------------------------------------------------------------
 if (viewMode) {
   viewMode.addEventListener("change",()=>{
@@ -250,7 +250,7 @@ if (btnToday) {
 
 
 // ---------------------------------------------------------------
-//  PARTE 10 — SELECIONAR DATA
+//  PARTE 10 – SELECIONAR DATA
 // ---------------------------------------------------------------
 function selectDate(date){
   selectedDate = new Date(date);
@@ -264,7 +264,7 @@ function selectDate(date){
 
 
 // ---------------------------------------------------------------
-//  PARTE 11 — FUNÇÕES FIREBASE (SEM DECLARAR `db` AQUI!)
+//  PARTE 11 – FUNÇÕES FIREBASE (SEM DECLARAR `db` AQUI!)
 // ---------------------------------------------------------------
 function colTypes()         { return db.collection("types"); }
 function colClients()       { return db.collection("clients"); }
@@ -274,7 +274,7 @@ function docScheduleConfig(){ return db.collection("config").doc("schedule"); }
 
 
 // ---------------------------------------------------------------
-//  PARTE 12 — CARREGAMENTO DE DADOS
+//  PARTE 12 – CARREGAMENTO DE DADOS
 // ---------------------------------------------------------------
 async function loadTypes(){
   const snap = await colTypes().get();
@@ -305,7 +305,7 @@ async function loadScheduleConfig() {
 
 
 // ---------------------------------------------------------------
-//  PARTE 13 — DISPONIBILIDADE DE HORÁRIOS
+//  PARTE 13 – DISPONIBILIDADE DE HORÁRIOS
 // ---------------------------------------------------------------
 async function getDayAvailability(dateStr){
   const snap = await colAvailability().doc(dateStr).get();
@@ -318,7 +318,7 @@ async function setDayAvailability(dateStr, key, val){
 
 
 // ---------------------------------------------------------------
-//  PARTE 14 — UPDATE DO DIA SELECIONADO
+//  PARTE 14 – UPDATE DO DIA SELECIONADO (CORRIGIDO)
 // ---------------------------------------------------------------
 async function updateDayDetail(){
   if (!selectedDate){
@@ -332,6 +332,7 @@ async function updateDayDetail(){
     weekday:"long", day:"2-digit", month:"long", year:"numeric"
   });
 
+  // LIMPA A LISTA ANTES DE RENDERIZAR
   hourlyList.innerHTML = "";
 
   const slots = generateTimeSlotsForDay(selectedDate);
@@ -362,7 +363,7 @@ async function updateDayDetail(){
   const isPast = selectedDate < now;
   const isToday = selectedDate.toDateString() === (new Date()).toDateString();
 
-  // TOGGLE ALL
+  // TOGGLE ALL - Criar apenas uma vez
   const toggleRow = document.createElement("div");
   toggleRow.className="toggle-all-row";
 
@@ -397,9 +398,11 @@ async function updateDayDetail(){
   lbl.appendChild(ck);
   lbl.appendChild(document.createTextNode("Habilitar horários disponíveis"));
   toggleRow.appendChild(lbl);
+  
+  // ADICIONA O TOGGLE ROW APENAS UMA VEZ
   hourlyList.appendChild(toggleRow);
 
-  // LISTA DE HORÁRIOS
+  // LISTA DE HORÁRIOS - Renderiza cada slot apenas uma vez
   slots.forEach(s=>{
     const row = document.createElement("div");
     row.className="slot-row";
@@ -445,7 +448,7 @@ async function updateDayDetail(){
 
 
 // ---------------------------------------------------------------
-//  PARTE 15 — CRUD: TIPOS
+//  PARTE 15 – CRUD: TIPOS
 // ---------------------------------------------------------------
 const typesList = document.getElementById("typesList");
 const typeName = document.getElementById("typeName");
@@ -512,7 +515,7 @@ if (btnAddType){
 
 
 // ---------------------------------------------------------------
-//  PARTE 16 — CRUD CLIENTES
+//  PARTE 16 – CRUD CLIENTES
 // ---------------------------------------------------------------
 const clientsList = document.getElementById("clientsList");
 const clientSearchInput = document.getElementById("clientSearchInput");
@@ -522,7 +525,7 @@ function renderClients(){
   clientsList.innerHTML="";
 
   const arr = Object.values(allClients);
-  const q = clientSearchInput.value.trim().toLowerCase();
+  const q = clientSearchInput ? clientSearchInput.value.trim().toLowerCase() : "";
 
   const list = q ? arr.filter(c=>
       (c.name||"").toLowerCase().includes(q) ||
@@ -558,7 +561,7 @@ if (clientSearchInput){
 
 
 // ---------------------------------------------------------------
-//  PARTE 17 — CRUD AGENDAMENTOS
+//  PARTE 17 – CRUD AGENDAMENTOS
 // ---------------------------------------------------------------
 const appointmentsList = document.getElementById("appointmentsList");
 
@@ -610,7 +613,7 @@ async function deleteAppointment(id){
 
 
 // ---------------------------------------------------------------
-//  PARTE 18 — FINANCEIRO
+//  PARTE 18 – FINANCEIRO
 // ---------------------------------------------------------------
 const financeTotal = document.getElementById("financeTotal");
 const financeQuantidade = document.getElementById("financeQuantidade");
@@ -663,7 +666,7 @@ function computeFinanceData(){
 
 
 // ---------------------------------------------------------------
-//  PARTE 19 — MENU LATERAL
+//  PARTE 19 – MENU LATERAL
 // ---------------------------------------------------------------
 const sbItems = Array.from(document.querySelectorAll(".sb-item"));
 const sidebar = document.getElementById("sidebar");
@@ -702,7 +705,7 @@ function openTab(tab){
 
 
 // ---------------------------------------------------------------
-//  PARTE 20 — BACKUP
+//  PARTE 20 – BACKUP
 // ---------------------------------------------------------------
 async function generateBackup(){
   return JSON.stringify({
@@ -725,7 +728,7 @@ async function restoreBackup(obj){
 
 
 // ---------------------------------------------------------------
-//  PARTE 21 — LOAD GERAL
+//  PARTE 21 – LOAD GERAL
 // ---------------------------------------------------------------
 async function loadAll(){
   await loadTypes();
@@ -743,4 +746,3 @@ async function loadAll(){
 //  BOOTSTRAP
 // ---------------------------------------------------------------
 loadAll();
-
