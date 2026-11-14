@@ -2676,4 +2676,137 @@ select:focus-visible,
 .weekday-checkbox:nth-child(4) { animation-delay: 0.2s; }
 .weekday-checkbox:nth-child(5) { animation-delay: 0.25s; }
 .weekday-checkbox:nth-child(6) { animation-delay: 0.3s; }
-.weekday-checkbox:nth-child(7) { animation-delay: 0.35s; }
+.weekday-checkbox:nth-child(7) { animation-delay: 0.35s; }
+
+/* ===== ALERTA DE CANCELAMENTOS NO HORÁRIO (Dashboard) ===== */
+.slot-free-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.slot-cancel-alert {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid #fcd34d;
+  background: #fef3c7;
+  color: #b45309;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.slot-cancel-alert:hover,
+.slot-cancel-alert:focus-visible {
+  background: #fde68a;
+  border-color: #f59e0b;
+  transform: scale(1.08);
+  outline: none;
+}
+
+.slot-cancel-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--danger);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* Mensagem ao passar o mouse */
+.slot-cancel-alert::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: -6px;
+  background: #0f2b2a;
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 8px 12px;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: all 0.15s ease;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.slot-cancel-alert::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 4px);
+  right: 10px;
+  border: 6px solid transparent;
+  border-top-color: #0f2b2a;
+  border-bottom: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.15s ease;
+  z-index: 20;
+}
+
+.slot-cancel-alert:hover::after,
+.slot-cancel-alert:hover::before,
+.slot-cancel-alert:focus-visible::after,
+.slot-cancel-alert:focus-visible::before {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* Lista do modal de cancelamentos */
+.cancellation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cancellation-item {
+  background: linear-gradient(135deg, #ffffff 0%, #fbfffe 100%);
+  border: 2px solid #e6f1ee;
+  border-left: 4px solid var(--danger);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.cancellation-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.cancellation-number {
+  font-weight: 800;
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
+.cancellation-reason {
+  background: #fee2e2;
+  color: #7f1d1d;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  word-break: break-word;
+}

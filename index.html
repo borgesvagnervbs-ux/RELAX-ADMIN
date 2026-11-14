@@ -557,6 +557,20 @@
 
 
 
+    <!-- Modal de Cancelamentos do Horário -->
+    <div id="cancellationsModal" class="modal-overlay hidden" onclick="closeCancellationsModal(event)">
+      <div class="modal" onclick="event.stopPropagation()" style="max-width:520px">
+        <div class="modal-header">
+          <h2 class="modal-title" id="cancellationsModalTitle">Cancelamentos</h2>
+          <button class="modal-close" onclick="closeCancellationsModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="cancellationsModalBody"></div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="closeCancellationsModal()">Fechar</button>
+        </div>
+      </div>
+    </div>
+
     <!-- RODAPÉ -->
     <footer class="app-footer">
       <div class="footer-content">

@@ -1067,6 +1067,81 @@ function openClientDetail(userId) {
   document.body.style.overflow = 'hidden';
 }
 
+// ====================
+// CANCELAMENTOS POR HORÁRIO (ícone de alerta no Dashboard)
+// ====================
+
+// Cria o ícone de alerta: ao passar o mouse mostra quantas vezes o horário foi cancelado;
+// ao clicar abre a lista com cliente e justificativa
+function createCancellationAlert(cancellations, timeLabel) {
+  const count = cancellations.length;
+  const message = `Este horário foi cancelado ${count} ${count === 1 ? 'vez' : 'vezes'}`;
+  
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'slot-cancel-alert';
+  btn.setAttribute('data-tooltip', message);
+  btn.setAttribute('aria-label', message + '. Clique para ver os detalhes.');
+  btn.innerHTML = `<i class="fas fa-exclamation-triangle"></i>${count > 1 ? `<span class="slot-cancel-count">${count}</span>` : ''}`;
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    openCancellationsModal(cancellations, timeLabel);
+  };
+  return btn;
+}
+
+function openCancellationsModal(cancellations, timeLabel) {
+  const modal = document.getElementById('cancellationsModal');
+  const title = document.getElementById('cancellationsModalTitle');
+  const body = document.getElementById('cancellationsModalBody');
+  if (!modal || !body) return;
+  
+  const dateLabel = cancellations[0]
+    ? new Date(cancellations[0].start).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+    : '';
+  title.textContent = `Cancelamentos • ${timeLabel}`;
+  
+  body.innerHTML = `
+    <div class="small" style="margin-bottom:16px">
+      ${escapeHtml(dateLabel)} às ${escapeHtml(timeLabel)} — cancelado ${cancellations.length} ${cancellations.length === 1 ? 'vez' : 'vezes'}
+    </div>
+    <div class="cancellation-list">
+      ${cancellations.map((ap, index) => `
+        <div class="cancellation-item">
+          <div class="cancellation-header">
+            <span class="cancellation-number">${index + 1}º</span>
+            <span class="clickable-client-name" data-user-id="${escapeHtml(ap.userId)}" title="Ver cadastro do cliente">${escapeHtml(ap.clientName || 'Cliente')}</span>
+            ${ap.clientPhone ? `<span class="small">• ${escapeHtml(maskPhone(ap.clientPhone))}</span>` : ''}
+          </div>
+          <div class="small" style="margin-bottom:8px">${escapeHtml(ap.typeName || '')}${ap.price !== undefined ? ' • ' + formatMoney(ap.price) : ''}</div>
+          <div class="cancellation-reason">
+            <strong>Justificativa:</strong> ${ap.cancellationReason ? escapeHtml(ap.cancellationReason) : '<em>Não informada</em>'}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  
+  // Nome do cliente abre o cadastro dele
+  body.querySelectorAll('.clickable-client-name[data-user-id]').forEach(el => {
+    el.addEventListener('click', () => {
+      closeCancellationsModal();
+      openClientDetail(el.dataset.userId);
+    });
+  });
+  
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeCancellationsModal(event) {
+  const modal = document.getElementById('cancellationsModal');
+  if (!modal) return;
+  if (event && event.target !== modal) return;
+  modal.classList.add('hidden');
+  document.body.style.overflow = 'auto';
+}
+
 function closeClientModal(event) {
   if (event && event.target !== clientDetailModal) return;
   clientDetailModal.classList.add('hidden');
@@ -2481,15 +2556,20 @@ async function updateDayDetail() {
     return d.toDateString() === selectedDate.toDateString();
   });
   
-  // Agendamento do horário: começa dentro do slot; agendamentos ativos têm prioridade sobre cancelados
+  // Agendamentos que começam dentro do horário (slot)
   const sessionMs = (scheduleConfig ? scheduleConfig.sessionDuration : 60) * 60 * 1000;
-  const findSlotAppointment = (slot) => {
+  const getSlotAppointments = (slot) => {
     const slotStart = new Date(selectedDate);
     slotStart.setHours(slot.hour, slot.minute, 0, 0);
     const startMs = slotStart.getTime();
-    const inSlot = dayAppointments.filter(a => a.start >= startMs && a.start < startMs + sessionMs);
-    return inSlot.find(a => a.status !== 'CANCELADO') || inSlot[0] || null;
+    return dayAppointments.filter(a => a.start >= startMs && a.start < startMs + sessionMs);
   };
+  // Agendamento ativo do horário (cancelados NÃO ocupam o horário: ele fica liberado)
+  const findSlotAppointment = (slot) => getSlotAppointments(slot).find(a => a.status !== 'CANCELADO') || null;
+  // Cancelamentos registrados naquele horário (para o ícone de alerta)
+  const findSlotCancellations = (slot) => getSlotAppointments(slot)
+    .filter(a => a.status === 'CANCELADO')
+    .sort((a, b) => (a.createdAt || a.start) - (b.createdAt || b.start));
   
   const now = new Date();
   const today = new Date();
@@ -2581,6 +2661,7 @@ async function updateDayDetail() {
     const isPastHour = isPastDate || (isToday && (slot.hour < currentHour || (slot.hour === currentHour && slot.minute < currentMinute)));
     
     const appt = findSlotAppointment(slot);
+    const cancellations = findSlotCancellations(slot);
     
     // Checkbox (desabilitado se for passado ou tiver agendamento)
     const checkbox = document.createElement('input');
@@ -2651,6 +2732,9 @@ async function updateDayDetail() {
       statusSelect.onchange = () => changeAppointmentStatus(appt, statusSelect, updateDayDetail);
       
       booked.appendChild(leftInfo);
+      if (cancellations.length > 0) {
+        booked.appendChild(createCancellationAlert(cancellations, slot.time));
+      }
       booked.appendChild(statusSelect);
       slotDiv.appendChild(booked);
     } else {
@@ -2658,6 +2742,15 @@ async function updateDayDetail() {
       const statusText = isPastHour ? 'Horário passado' : (isAvailable ? 'Livre' : 'Indisponível');
       const statusColor = isPastHour ? 'color: #9ca3af; font-style: italic;' : (isAvailable ? '' : 'color: #ef4444; font-weight: 600;');
       slotDiv.innerHTML = `<div class="slot-empty" style="${statusColor}">${statusText}</div>`;
+      
+      // Horário liberado por cancelamento: mostra o ícone de alerta ao lado
+      if (cancellations.length > 0) {
+        const freeRow = document.createElement('div');
+        freeRow.className = 'slot-free-row';
+        freeRow.appendChild(slotDiv.firstElementChild);
+        freeRow.appendChild(createCancellationAlert(cancellations, slot.time));
+        slotDiv.appendChild(freeRow);
+      }
     }
     
     row.appendChild(checkbox);
