@@ -13,6 +13,7 @@
   --card-gradient: linear-gradient(180deg, #ffffff, #fbfffe);
   --text: #0f2b2a;
   --text-secondary: #5e7674;
+  --text-primary: var(--text); /* usada nos estilos de clientes */
   --success: #10b981;
   --danger: #ef4444;
   --warning: #f59e0b;
@@ -2591,98 +2592,6 @@ select:focus-visible,
   text-align: center;
 }
 
-/* ===== ALERTAS DE AUSÊNCIA DE HORÁRIOS ===== */
-.no-slots-alert {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 24px;
-  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-  border: 2px solid #ef4444;
-  border-radius: var(--radius);
-  margin-top: 12px;
-  animation: slideInDown 0.3s ease;
-}
-
-.no-slots-alert.warning {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  border-color: #f59e0b;
-}
-
-.no-slots-icon {
-  flex-shrink: 0;
-  width: 64px;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 50%;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.no-slots-alert .no-slots-icon i {
-  font-size: 2rem;
-  color: #991b1b;
-}
-
-.no-slots-alert.warning .no-slots-icon i {
-  color: #92400e;
-}
-
-.no-slots-content {
-  flex: 1;
-}
-
-.no-slots-content h4 {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #991b1b;
-  margin: 0 0 8px 0;
-}
-
-.no-slots-alert.warning .no-slots-content h4 {
-  color: #92400e;
-}
-
-.no-slots-content p {
-  font-size: 0.9rem;
-  color: #7f1d1d;
-  margin: 0;
-  line-height: 1.5;
-}
-
-.no-slots-alert.warning .no-slots-content p {
-  color: #78350f;
-}
-
-/* Responsividade para alertas */
-@media (max-width: 480px) {
-  .no-slots-alert {
-    flex-direction: column;
-    text-align: center;
-    padding: 20px 16px;
-    gap: 16px;
-  }
-  
-  .no-slots-icon {
-    width: 56px;
-    height: 56px;
-  }
-  
-  .no-slots-icon i {
-    font-size: 1.75rem;
-  }
-  
-  .no-slots-content h4 {
-    font-size: 1rem;
-  }
-  
-  .no-slots-content p {
-    font-size: 0.85rem;
-  }
-}
-
 /* Responsividade */
 @media (max-width: 768px) {
   .weekdays-config {
@@ -2756,4 +2665,4 @@ select:focus-visible,
 .weekday-checkbox:nth-child(4) { animation-delay: 0.2s; }
 .weekday-checkbox:nth-child(5) { animation-delay: 0.25s; }
 .weekday-checkbox:nth-child(6) { animation-delay: 0.3s; }
-.weekday-checkbox:nth-child(7) { animation-delay: 0.35s; }
+.weekday-checkbox:nth-child(7) { animation-delay: 0.35s; }

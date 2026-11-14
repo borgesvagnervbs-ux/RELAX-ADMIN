@@ -4,6 +4,9 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Painel Administrador - Massagens Zen</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-512.png">
+  <meta name="theme-color" content="#6fb7a7">
   <link rel="stylesheet" href="style-admin.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -486,7 +489,7 @@
         </div>
         <div class="modal-body">
           <!-- Cliente -->
-          <div style="margin-bottom: 12px;">
+          <div style="margin-bottom: 12px; position: relative;">
             <label class="small" style="display:block;margin-bottom:6px;font-weight:600">Cliente <span style="color:#ef4444">*</span></label>
             <input id="appointmentClientName" type="text" class="input" placeholder="Digite o nome do cliente" autocomplete="off"/>
             <div id="clientSuggestions" class="client-suggestions hidden"></div>
@@ -635,4 +638,4 @@
   <script src="firebase-config.js"></script>
   <script src="admin.js"></script>
 </body>
-</html>
+</html>

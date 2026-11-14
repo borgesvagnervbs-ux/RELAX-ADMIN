@@ -1,5 +1,6 @@
 // firebase-config.js
 // Configuração do Firebase com Autenticação Completa
+// (arquivo único: use o MESMO arquivo no painel admin e no app do cliente)
 
 const firebaseConfig = {
   apiKey: "AIzaSyDtDUaL76tYA5-z5fF_znZpVBHpivazli0",
@@ -132,10 +133,11 @@ async function getUserProfile(uid) {
 // Atualizar perfil do usuário
 async function updateUserProfile(uid, data) {
   try {
-    await usersCollection.doc(uid).update({
+    // set + merge funciona mesmo se o documento ainda não existir
+    await usersCollection.doc(uid).set({
       ...data,
       updatedAt: Date.now()
-    });
+    }, { merge: true });
     
     if (data.name && auth.currentUser) {
       await auth.currentUser.updateProfile({
@@ -251,33 +253,40 @@ async function getAllAppointments() {
 
 async function getUserAppointments(userId) {
   try {
+    // Ordenação feita aqui para não exigir índice composto no Firestore
     const snapshot = await appointmentsCollection
       .where('userId', '==', userId)
-      .orderBy('start')
       .get();
-    return snapshot.docs.map(doc => doc.data());
+    return snapshot.docs.map(doc => doc.data()).sort((a, b) => a.start - b.start);
   } catch (error) {
     console.error('Erro ao buscar agendamentos do usuário:', error);
     return [];
   }
 }
 
+// Agendamentos (de todos os clientes) que começam dentro de um intervalo de tempo
+async function getAppointmentsInRange(startTs, endTs) {
+  const snapshot = await appointmentsCollection
+    .where('start', '>=', startTs)
+    .where('start', '<', endTs)
+    .get();
+  return snapshot.docs.map(doc => doc.data());
+}
+
+// Retorna o agendamento ativo que se sobrepõe ao horário, ou null.
+// Usa filtro em um único campo (o Firestore não aceita intervalo em "start" e "end" juntos
+// sem índice especial; antes a consulta falhava e o conflito nunca era detectado).
+// Em caso de erro, lança a exceção para o agendamento NÃO ser gravado às cegas.
 async function checkConflict(startTs, endTs, excludeId = null) {
-  try {
-    const snapshot = await appointmentsCollection
-      .where('start', '<', endTs)
-      .where('end', '>', startTs)
-      .get();
-    
-    const conflicts = snapshot.docs
-      .map(doc => doc.data())
-      .filter(a => a.id !== excludeId);
-    
-    return conflicts.length > 0 ? conflicts[0] : null;
-  } catch (error) {
-    console.error('Erro ao verificar conflito:', error);
-    return null;
-  }
+  const MAX_SESSION_MS = 12 * 60 * 60 * 1000;
+  const candidates = await getAppointmentsInRange(startTs - MAX_SESSION_MS, endTs);
+  const conflict = candidates.find(a =>
+    a.id !== excludeId &&
+    a.status !== 'CANCELADO' &&
+    a.start < endTs &&
+    (a.end || a.start + 60 * 60 * 1000) > startTs
+  );
+  return conflict || null;
 }
 
 async function deleteAppointment(appointmentId) {
@@ -405,36 +414,84 @@ function unmaskPhone(value) {
 // REGRAS DE SEGURANÇA DO FIRESTORE
 // ====================
 /*
-Cole estas regras no Firebase Console -> Firestore Database -> Rules:
+Cole estas regras no Firebase Console -> Firestore Database -> Rules.
+
+IMPORTANTE - ANTES de publicar:
+  1. No Firebase Console -> Authentication, copie o UID da sua conta de administrador.
+  2. No Firestore, crie a coleção "admins" e dentro dela um documento cujo ID seja
+     esse UID (o conteúdo pode ser qualquer campo, ex.: { nome: "Admin" }).
+  Sem esse documento, o painel não conseguirá gravar dados.
+
+O que mudou em relação às regras anteriores:
+  - "system_config" (configuração de horários) não tinha regra -> o Firestore
+    bloqueava e a aba "Horários de Atendimento" não salvava.
+  - O admin agora pode cadastrar clientes (antes só o próprio usuário podia
+    gravar o seu perfil, então "Novo Cliente" falhava).
+  - Escritas sensíveis (tipos, horários, outros perfis) passam a exigir admin;
+    antes qualquer cliente logado podia alterá-las.
+  - O cliente só pode criar agendamentos PENDENTES/não pagos e só pode cancelar
+    os próprios (antes podia marcar qualquer agendamento como pago).
 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Tipos de massagem - leitura pública, escrita apenas autenticados
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Lista de administradores - somente leitura do próprio registro
+    match /admins/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // Tipos de massagem - leitura pública, escrita apenas admin
     match /massage_types/{typeId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
-    
-    // Agendamentos - admin pode ler todos, usuários apenas os seus
+
+    // Configuração de horários - leitura pública, escrita apenas admin
+    match /system_config/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Agendamentos
+    // - leitura para usuários logados (o app do cliente precisa ver os horários ocupados)
+    // - cliente só cria agendamento próprio, PENDENTE e não pago
+    // - cliente só pode CANCELAR o próprio agendamento (não pode marcar como pago etc.)
     match /appointments/{appointmentId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update: if request.auth != null;
-      allow delete: if request.auth != null;
+      allow read: if isSignedIn();
+      allow create: if isAdmin() ||
+        (isSignedIn() &&
+         request.resource.data.userId == request.auth.uid &&
+         request.resource.data.status == 'PENDENTE' &&
+         request.resource.data.paid == false);
+      allow update: if isAdmin() ||
+        (isSignedIn() &&
+         resource.data.userId == request.auth.uid &&
+         request.resource.data.status == 'CANCELADO' &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancellationReason']));
+      allow delete: if isAdmin();
     }
-    
-    // Disponibilidade - leitura pública, escrita autenticados
+
+    // Disponibilidade - leitura pública, escrita apenas admin
     match /availability/{dateId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
-    
-    // Perfis de usuários - usuário pode ler e escrever apenas seu próprio perfil
-    // Admin pode ler todos os perfis (para visualizar dados dos clientes)
+
+    // Perfis - cada usuário lê/grava o seu; o admin lê e grava todos
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow write: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
     }
   }
 }
