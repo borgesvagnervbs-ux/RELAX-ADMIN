@@ -2326,6 +2326,17 @@ select:focus-visible,
   color: var(--danger);
 }
 
+/* Avisos dentro da grade de horários (ex.: "Este dia não está disponível")
+   ocupam a largura inteira, igual ao aviso do Dashboard */
+.time-slots-grid > .card,
+.time-slots-grid > .loading,
+.time-slots-grid > .no-slots,
+.time-slots-grid > .error {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin-bottom: 0;
+}
+
 /* ===== PRICE DISPLAY ===== */
 .price-display {
   display: flex;

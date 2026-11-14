@@ -1871,9 +1871,9 @@ async function loadAppointmentTimeSlots() {
 
     if (slots.length === 0) {
       appointmentTimeSlots.innerHTML = `
-        <div class="card" style="background: linear-gradient(135deg, #fee2e2, #fecaca); border: 2px solid #ef4444; padding: 20px; text-align: center; margin-top: 12px;">
-          <i class="fas fa-times-circle" style="font-size: 2.5rem; color: #991b1b; margin-bottom: 12px;"></i>
-          <div style="font-weight: 700; font-size: 1rem; color: #991b1b; margin-bottom: 8px;">
+        <div class="card slots-unavailable-card" style="background: linear-gradient(135deg, #fee2e2, #fecaca); border: 2px solid #ef4444; padding: 20px; text-align: center;">
+          <i class="fas fa-times-circle" style="font-size: 3rem; color: #991b1b; margin-bottom: 12px;"></i>
+          <div style="font-weight: 700; font-size: 1.1rem; color: #991b1b; margin-bottom: 8px;">
             Este dia não está disponível para agendamentos.
           </div>
           <div class="small" style="color: #7f1d1d;">
@@ -1940,9 +1940,9 @@ async function loadAppointmentTimeSlots() {
 
     if (!hasAvailableSlots) {
       appointmentTimeSlots.innerHTML = `
-        <div class="card" style="background: linear-gradient(135deg, #fee2e2, #fecaca); border: 2px solid #ef4444; padding: 20px; text-align: center; margin-top: 12px;">
-          <i class="fas fa-clock" style="font-size: 2.5rem; color: #991b1b; margin-bottom: 12px;"></i>
-          <div style="font-weight: 700; font-size: 1rem; color: #991b1b; margin-bottom: 8px;">
+        <div class="card slots-unavailable-card" style="background: linear-gradient(135deg, #fee2e2, #fecaca); border: 2px solid #ef4444; padding: 20px; text-align: center;">
+          <i class="fas fa-clock" style="font-size: 3rem; color: #991b1b; margin-bottom: 12px;"></i>
+          <div style="font-weight: 700; font-size: 1.1rem; color: #991b1b; margin-bottom: 8px;">
             ${isToday ? 'Horário de atendimento encerrado.' : 'Nenhum horário disponível neste dia.'}
           </div>
           <div class="small" style="color: #7f1d1d;">
