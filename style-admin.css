@@ -2810,3 +2810,19 @@ select:focus-visible,
   line-height: 1.4;
   word-break: break-word;
 }
+
+/* ===== DADOS DO CLIENTE: TEXTOS LONGOS (ex.: email) NÃO SAEM DA CAIXA ===== */
+.client-detail-item {
+  min-width: 0;
+}
+
+.client-detail-value {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.client-card-meta span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}

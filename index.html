@@ -426,7 +426,7 @@
     <div id="addClientModal" class="modal-overlay hidden" onclick="closeAddClientModal(event)">
       <div class="modal" onclick="event.stopPropagation()">
         <div class="modal-header">
-          <h2 class="modal-title">Novo Cliente</h2>
+          <h2 class="modal-title" id="addClientModalTitle">Novo Cliente</h2>
           <button class="modal-close" onclick="closeAddClientModal()">&times;</button>
         </div>
         <div class="modal-body">
@@ -449,6 +449,7 @@
           <div style="margin-bottom: 12px;">
             <label class="small" style="display:block;margin-bottom:6px;font-weight:600">Email</label>
             <input id="newClientEmail" type="email" class="input" placeholder="email@exemplo.com"/>
+            <div id="newClientEmailHint" class="small hidden" style="margin-top:6px">Este é o email de acesso do cliente ao app e não pode ser alterado pelo painel.</div>
           </div>
           
           <h4 style="margin: 20px 0 12px 0; color: var(--text); font-size: 1rem;">Endereço (Opcional)</h4>
@@ -475,7 +476,7 @@
         </div>
         <div class="modal-footer">
           <button class="btn btn-ghost" onclick="closeAddClientModal()">Cancelar</button>
-          <button class="btn btn-primary" onclick="saveNewClient()">Salvar Cliente</button>
+          <button class="btn btn-primary" id="addClientSaveBtn" onclick="saveNewClient()">Salvar Cliente</button>
         </div>
       </div>
     </div>
@@ -550,6 +551,9 @@
           <!-- Conteúdo será inserido dinamicamente -->
         </div>
         <div class="modal-footer">
+          <button class="btn btn-primary" onclick="editClientFromDetail()">
+            <i class="fas fa-edit"></i> Editar Cadastro
+          </button>
           <button class="btn btn-ghost" onclick="closeClientModal()">Fechar</button>
         </div>
       </div>

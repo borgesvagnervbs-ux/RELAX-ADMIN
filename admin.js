@@ -105,6 +105,8 @@ let appointmentSelectedHour = null;
 let appointmentCurrentMonth = new Date();
 let selectedClientId = null;
 let appointmentSelectedMinute = 0;
+let editingClientId = null;        // cliente sendo editado (null = cadastro novo)
+let currentDetailClientId = null;  // cliente aberto na janela de detalhes
 
 // Variáveis para configuração de horários
 let scheduleConfig = null;
@@ -142,6 +144,7 @@ function normalizeClient(id, data) {
     cpf: data.cpf || '',
     birthdate: data.birthdate || '',
     address: data.address || {},
+    hasLogin: !!data.uid, // cliente com conta no app (login por email/Google)
     createdAt: data.createdAt || Date.now()
   };
 }
@@ -952,6 +955,7 @@ function openClientDetail(userId) {
     `;
   }
 
+  currentDetailClientId = userId;
   clientModalTitle.textContent = client.name;
   
   let appointmentsHTML = '';
@@ -985,7 +989,7 @@ function openClientDetail(userId) {
       <div class="client-detail-grid">
         <div class="client-detail-item">
           <span class="client-detail-label">Email:</span>
-          <span class="client-detail-value">${escapeHtml(client.email) || 'Não informado'}</span>
+          <span class="client-detail-value">${escapeHtml(client.email).replace('@', '@<wbr>') || 'Não informado'}</span>
         </div>
         <div class="client-detail-item">
           <span class="client-detail-label">Telefone:</span>
@@ -1152,7 +1156,17 @@ clientSearchInput.addEventListener('input', () => {
   loadClientsUI();
 });
 
+// Ajusta a janela de cliente para "Novo" ou "Editar"
+function setClientModalMode(isEdit, emailLocked) {
+  document.getElementById('addClientModalTitle').textContent = isEdit ? 'Editar Cliente' : 'Novo Cliente';
+  document.getElementById('addClientSaveBtn').textContent = isEdit ? 'Salvar Alterações' : 'Salvar Cliente';
+  newClientEmail.disabled = !!emailLocked;
+  document.getElementById('newClientEmailHint').classList.toggle('hidden', !emailLocked);
+}
+
 function openAddClientModal() {
+  editingClientId = null;
+  setClientModalMode(false, false);
   newClientName.value = '';
   newClientPhone.value = '';
   newClientCpf.value = '';
@@ -1175,6 +1189,61 @@ function closeAddClientModal(event) {
   if (event && event.target !== addClientModal) return;
   addClientModal.classList.add('hidden');
   document.body.style.overflow = 'auto';
+  editingClientId = null;
+}
+
+// Abre a janela de cadastro já preenchida com os dados do cliente
+function openEditClientModal(userId) {
+  const client = allClients[userId];
+  if (!client) {
+    alert('Cliente não encontrado');
+    return;
+  }
+  const addr = client.address || {};
+  
+  editingClientId = userId;
+  // O email de quem tem login no app é o email de acesso: alterar aqui não mudaria o login
+  setClientModalMode(true, client.hasLogin);
+  
+  newClientName.value = client.name || '';
+  newClientPhone.value = maskPhone(client.phone || '');
+  newClientCpf.value = maskCpf(client.cpf || '');
+  newClientBirthdate.value = client.birthdate || '';
+  newClientEmail.value = client.email || '';
+  newClientCep.value = maskCep(addr.cep || '');
+  newClientStreet.value = addr.street || '';
+  newClientNumber.value = addr.number || '';
+  newClientComplement.value = addr.complement || '';
+  newClientNeighborhood.value = addr.neighborhood || '';
+  newClientCity.value = addr.city || '';
+  newClientState.value = addr.state || '';
+  
+  addClientModal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  newClientName.focus();
+}
+
+// Botão "Editar Cadastro" da janela de detalhes do cliente
+function editClientFromDetail() {
+  if (!currentDetailClientId) return;
+  const userId = currentDetailClientId;
+  clientDetailModal.classList.add('hidden');
+  openEditClientModal(userId);
+}
+
+// Atualiza nome/telefone gravados nos agendamentos do cliente (aparecem nas listas e no Dashboard)
+async function syncClientDataInAppointments(userId, name, phone) {
+  const toUpdate = allAppointments.filter(a =>
+    a.userId === userId && (a.clientName !== name || a.clientPhone !== phone)
+  );
+  const db = firebase.firestore();
+  for (let i = 0; i < toUpdate.length; i += 400) {
+    const batch = db.batch();
+    toUpdate.slice(i, i + 400).forEach(a => {
+      batch.update(db.collection('appointments').doc(a.id), { clientName: name, clientPhone: phone });
+    });
+    await batch.commit();
+  }
 }
 
 async function searchCepNewClient() {
@@ -1246,6 +1315,60 @@ async function saveNewClient() {
     return;
   }
 
+  // ===== EDIÇÃO DE CLIENTE EXISTENTE =====
+  if (editingClientId) {
+    const userId = editingClientId;
+    const original = allClients[userId] || {};
+    const saveBtn = document.getElementById('addClientSaveBtn');
+    const updatedData = {
+      name,
+      phone,
+      cpf: cpf ? unmaskCpf(cpf) : '',
+      birthdate: birthdate || '',
+      address: {
+        cep: newClientCep.value.trim() ? unmaskCep(newClientCep.value) : '',
+        street: newClientStreet.value.trim() || '',
+        number: newClientNumber.value.trim() || '',
+        complement: newClientComplement.value.trim() || '',
+        neighborhood: newClientNeighborhood.value.trim() || '',
+        city: newClientCity.value.trim() || '',
+        state: newClientState.value.trim().toUpperCase() || ''
+      },
+      updatedAt: Date.now()
+    };
+    // Email só é alterado em clientes cadastrados pelo painel (sem login no app)
+    if (!original.hasLogin) updatedData.email = email || '';
+    
+    saveBtn.disabled = true;
+    try {
+      await firebase.firestore().collection('users').doc(userId).set(updatedData, { merge: true });
+      
+      // Atualiza a lista local na hora (o listener também atualiza em seguida)
+      const merged = normalizeClient(userId, { ...original, ...updatedData, uid: original.hasLogin ? userId : undefined });
+      if (merged) allClients[userId] = merged;
+      
+      try {
+        await syncClientDataInAppointments(userId, name, phone);
+      } catch (syncError) {
+        console.error('Erro ao atualizar agendamentos do cliente:', syncError);
+        alert('Cadastro salvo, mas não foi possível atualizar o nome/telefone nos agendamentos antigos.');
+      }
+      
+      alert('✅ Cadastro atualizado com sucesso!');
+      closeAddClientModal();
+      loadClientsUI();
+      if (selectedDate) updateDayDetail();
+      openClientDetail(userId);
+    } catch (error) {
+      console.error('Erro ao atualizar cliente:', error);
+      alert('Erro ao salvar alterações. Tente novamente.');
+    } finally {
+      saveBtn.disabled = false;
+    }
+    return;
+  }
+
+  // ===== NOVO CLIENTE =====
   try {
     const userId = uid();
     const clientData = {
