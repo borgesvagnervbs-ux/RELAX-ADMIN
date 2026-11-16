@@ -987,7 +987,7 @@ function openClientDetail(userId) {
     <div class="client-detail-section">
       <h4><i class="fas fa-info-circle"></i> Informações Pessoais</h4>
       <div class="client-detail-grid">
-        <div class="client-detail-item">
+        <div class="client-detail-item full-width">
           <span class="client-detail-label">Email:</span>
           <span class="client-detail-value">${escapeHtml(client.email).replace('@', '@<wbr>') || 'Não informado'}</span>
         </div>
